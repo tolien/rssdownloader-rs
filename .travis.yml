@@ -1,0 +1,16 @@
+language: rust
+cache: cargo
+rust:
+  - stable
+  - beta
+  - nightly
+before_script:
+  - rustup set profile minimal
+  - rustup component add clippy
+script:
+  - cargo clippy
+  - cargo test --verbose
+matrix:
+  allow_failures:
+    - rust: nightly
+  fast_finish: true
