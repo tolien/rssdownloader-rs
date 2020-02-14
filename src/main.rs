@@ -10,6 +10,7 @@ use toml::Value;
 async fn main() {
     let config = Config::new().unwrap();
     println!("Global download dir: {}", config.global_download_dir);
+    println!("Working with {} feed(s)", config.feeds.len());
 
     for feed in config.feeds {
         println!("Fetching {}", feed.name);
@@ -27,6 +28,7 @@ async fn main() {
 }
 
 async fn fetch_rss(url: &str) -> Result<Channel, Box<dyn std::error::Error>> {
+    println!("Fetching URL {}", url);
     let text = reqwest::get(url).await?.text().await?;
 
     let channel = Channel::read_from(text.as_bytes()).unwrap();
@@ -42,10 +44,14 @@ pub struct FeedConfig {
 }
 impl FeedConfig {
     pub fn new(name: &str, values: &toml::Value) -> Result<Self, &'static str> {
-        let url = values["feedurl"].as_str().unwrap_or_else(|| {
-            return "No URL found for feed";
-        });
-        println!("feed URL: {}", String::from(url));
+        let url;
+        if let Some(url_value) = values.get("feedurl") {
+            url = url_value.as_str().unwrap();
+            println!("feed URL: {}", String::from(url));
+        }
+        else {
+            return Err("No URL found for feed");
+        }
 
         let feed_filter;
         if values.get("feed_regex").is_some() {
@@ -101,8 +107,15 @@ impl Config {
         let mut feed_objects = Vec::<FeedConfig>::new();
         for feed in feeds.keys() {
             println!("feed name: {:?}", feed);
-            let feed_value = feeds.get(feed).unwrap();
-            feed_objects.push(FeedConfig::new(feed, feed_value).unwrap());
+            if let Some(feed_value) = feeds.get(feed) {
+                let feed_obj = FeedConfig::new(feed, feed_value);
+                if feed_obj.is_ok() {
+                    feed_objects.push(FeedConfig::new(feed, feed_value).unwrap());
+                }
+                else if let Some(error) = feed_obj.err() {
+                        println!("Error parsing config: {}", error);
+                }
+            }
         }
 
         Ok(Self {
