@@ -13,22 +13,19 @@ async fn main() {
 
     for feed in config.feeds {
         println!("Fetching {}", feed.name);
-        let rss = fetch_rss(feed.url);
-    }
-}
-
-async fn match_feed() {
-    let url = "";
-    let channel = block_on(fetch_rss(url)).unwrap();
-    for item in channel.into_items() {
-        let title = item.title().unwrap();
-        let re = Regex::new(r"").unwrap();
-        if re.is_match(title) {
-            println!("title: {:?}", title);
-            println!("url: {:?}", item.link().unwrap())
+        let rss_channel = block_on(fetch_rss(&feed.url)).unwrap();
+        for item in rss_channel.into_items() {
+            let title = item.title().unwrap();
+            for regex in &feed.download_filter {
+                if regex.is_match(title) {
+                    println!("title: {:?}", title);
+                    println!("url: {:?}", item.link().unwrap())
+                }
+            }
         }
     }
 }
+
 async fn fetch_rss(url: &str) -> Result<Channel, Box<dyn std::error::Error>> {
     let text = reqwest::get(url).await?.text().await?;
 
