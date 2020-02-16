@@ -7,7 +7,7 @@ use toml::Value;
 pub struct FeedConfig {
     pub name: String,
     pub url: String,
-    pub global_filter: Option<Regex>,
+    pub global_include_filter: Option<Regex>,
     pub global_exclude_filter: Option<Regex>,
     pub download_filter: Vec<Regex>,
 }
@@ -34,6 +34,19 @@ impl FeedConfig {
             feed_filter = None;
         }
 
+        let feed_skip_filter;
+        if values.get("feed_skip_regex").is_some() {
+            let filter = values.get("feed_skip_regex").unwrap();
+            if filter.is_str() {
+                let filter_string = filter.as_str().unwrap();
+                feed_skip_filter = Some(Regex::new(filter_string).unwrap());
+            } else {
+                feed_skip_filter = None;
+            }
+        } else {
+            feed_skip_filter = None;
+        }
+
         let mut regex_list = Vec::new();
         let feed_filters = values.get("download_regex_list");
         if let Some(filters) = feed_filters {
@@ -49,8 +62,8 @@ impl FeedConfig {
         Ok(Self {
             name: String::from(name),
             url: String::from(url),
-            global_filter: feed_filter,
-            global_exclude_filter: None,
+            global_include_filter: feed_filter,
+            global_exclude_filter: feed_skip_filter,
             download_filter: regex_list,
         })
     }
