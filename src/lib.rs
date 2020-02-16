@@ -4,12 +4,12 @@ use regex::Regex;
 
 use toml::Value;
 
-
 pub struct FeedConfig {
     pub name: String,
     pub url: String,
     pub global_filter: Option<Regex>,
-    pub download_filter: Vec<Regex>
+    pub global_exclude_filter: Option<Regex>,
+    pub download_filter: Vec<Regex>,
 }
 impl FeedConfig {
     pub fn new(name: &str, values: &toml::Value) -> Result<Self, &'static str> {
