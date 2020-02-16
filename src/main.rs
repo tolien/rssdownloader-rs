@@ -1,22 +1,21 @@
 extern crate dirs;
 
 use futures::executor::block_on;
-use rssdownloader_rs::Config;
 use rss::Channel;
+use rssdownloader_rs::Config;
 use std::process;
 
 #[tokio::main]
 async fn main() {
     let config_result = Config::new();
-		let config;
-		if config_result.is_ok() {
-			config = config_result.unwrap()
-		}
-		else {
-    	println!("Error parsing config: {}", config_result.err().unwrap());
-			process::exit(1);			
+    let config;
+    if config_result.is_ok() {
+        config = config_result.unwrap()
+    } else {
+        println!("Error parsing config: {}", config_result.err().unwrap());
+        process::exit(1);
     };
-		
+
     println!("Global download dir: {}", config.global_download_dir);
     println!("Working with {} feed(s)", config.feeds.len());
 
@@ -42,5 +41,4 @@ async fn fetch_rss(url: &str) -> Result<Channel, Box<dyn std::error::Error>> {
     let channel = Channel::read_from(text.as_bytes()).unwrap();
 
     Ok(channel)
-
 }
