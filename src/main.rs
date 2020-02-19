@@ -25,14 +25,14 @@ async fn main() {
         for item in rss_channel.into_items() {
             let title = item.title().unwrap();
             if let Some(global_regex) = &feed.global_include_filter {
-              if !global_regex.is_match(title) {
-                continue;
-              }
+                if !global_regex.is_match(title) {
+                    continue;
+                }
             }
             if let Some(global_exclude_regex) = &feed.global_exclude_filter {
-              if global_exclude_regex.is_match(title) {
-                continue;
-              }
+                if global_exclude_regex.is_match(title) {
+                    continue;
+                }
             }
             for regex in &feed.download_filter {
                 if regex.is_match(title) {

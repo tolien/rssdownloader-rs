@@ -79,28 +79,32 @@ impl Config {
         let config_path = working_dir.join("config.toml");
         println!("Using config path {:?}", config_path);
         if let Ok(properties) = fs::read_to_string(config_path) {
-            let values = &properties.parse::<Value>().unwrap();
-            let feeds = values["feeds"].as_table().unwrap();
-            println!("Feeds found: {}", feeds.len());
-            let mut feed_objects = Vec::<FeedConfig>::new();
-            for feed in feeds.keys() {
-                println!("feed name: {:?}", feed);
-                if let Some(feed_value) = feeds.get(feed) {
-                    let feed_obj = FeedConfig::new(feed, feed_value);
-                    if feed_obj.is_ok() {
-                        feed_objects.push(FeedConfig::new(feed, feed_value).unwrap());
-                    } else if let Some(error) = feed_obj.err() {
-                        println!("Error parsing config: {}", error);
-                    }
-                }
-            }
-
-            Ok(Self {
-                global_download_dir: values["downloadDir"].to_string(),
-                feeds: feed_objects,
-            })
+            Config::construct_from_string(&properties)
         } else {
             Err("Couldn't open config file")
         }
+    }
+
+    fn construct_from_string(properties: &str) -> Result<Self, &'static str> {
+        let values = properties.parse::<Value>().unwrap();
+        let feeds = values["feeds"].as_table().unwrap();
+        println!("Feeds found: {}", feeds.len());
+        let mut feed_objects = Vec::<FeedConfig>::new();
+        for feed in feeds.keys() {
+            println!("feed name: {:?}", feed);
+            if let Some(feed_value) = feeds.get(feed) {
+                let feed_obj = FeedConfig::new(feed, feed_value);
+                if feed_obj.is_ok() {
+                    feed_objects.push(FeedConfig::new(feed, feed_value).unwrap());
+                } else if let Some(error) = feed_obj.err() {
+                    println!("Error parsing config: {}", error);
+                }
+            }
+        }
+
+        Ok(Self {
+            global_download_dir: values["downloadDir"].to_string(),
+            feeds: feed_objects,
+        })
     }
 }
