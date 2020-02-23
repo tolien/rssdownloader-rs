@@ -89,26 +89,65 @@ impl Config {
         }
     }
 
-    fn construct_from_string(properties: &str) -> Result<Self, &'static str> {
-        let values = properties.parse::<Value>().unwrap();
-        let feeds = values["feeds"].as_table().unwrap();
-        println!("Feeds found: {}", feeds.len());
+    pub fn construct_from_string(properties: &str) -> Result<Self, &'static str> {
+        let parse_result = properties.parse::<Value>();
+        if parse_result.is_err() {
+            error!("Parse error: {:?}", parse_result.err());
+            return Err("Error parsing config file");
+        };
+        let values = parse_result.unwrap();
+        let feeds_value = values.get("feeds");
+        if feeds_value.is_none() {
+            return Err("Feed list not found");
+        }
+        let feeds_table = feeds_value.unwrap().as_table();
+        if feeds_table.is_none() {
+            return Err("Feed list not found");
+        }
+        let feeds = feeds_table.unwrap();
+        debug!("Feeds found: {}", feeds.len());
         let mut feed_objects = Vec::<FeedConfig>::new();
         for feed in feeds.keys() {
-            println!("feed name: {:?}", feed);
             if let Some(feed_value) = feeds.get(feed) {
-                let feed_obj = FeedConfig::new(feed, feed_value);
-                if feed_obj.is_ok() {
-                    feed_objects.push(FeedConfig::new(feed, feed_value).unwrap());
-                } else if let Some(error) = feed_obj.err() {
-                    println!("Error parsing config: {}", error);
+                let feed_obj_result = FeedConfig::new(feed, feed_value);
+                if let Ok(feed_obj) = feed_obj_result {
+                    info!("Adding feed {}", feed);
+                    feed_objects.push(feed_obj);
+                } else if let Some(error) = feed_obj_result.err() {
+                    error!("Error parsing config: {}", error);
                 }
             }
         }
 
+        let download_dir_result = values.get("download_dir");
+        if download_dir_result.is_none() {
+            return Err("Download directory must be specified");
+        }
+        let download_dir = download_dir_result.unwrap().as_str().unwrap();
+
         Ok(Self {
-            global_download_dir: values["downloadDir"].to_string(),
+            global_download_dir: String::from(download_dir),
             feeds: feed_objects,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::Config;
+
+    #[test]
+    fn config_is_parsed_correctly() {
+        let mut result;
+
+        result = Config::construct_from_string("jibberish");
+        assert_eq!(result.err(), Some("Error parsing config file"));
+
+        result = Config::construct_from_string("");
+        assert_eq!(result.err(), Some("Feed list not found"));
+
+        result = Config::construct_from_string("download_dir = \"/home/user/download\"\n\n");
+        assert_eq!(result.err(), Some("Feed list not found"));
     }
 }
