@@ -22,9 +22,7 @@ download_dir=/opt/podcasts
   ]
 ```
 
-Additionally, you can add these options for a feed:
+Additionally, you can add these options for a feed to simplify your download regexes:
 
 * feed_regex - items which don't match this should be skipped regardless of if they match a download regex
 * feed_skip_regex in a feed - regex for a feed for items which should be skipped
-
-You can use these to simplify your download regexes.
