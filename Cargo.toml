@@ -14,7 +14,7 @@ toml = "0.5.6"
 chrono = "0.4.10"
 log = "0.4.8"
 fern = { version = "0.5.9", features = ["colored"] }
-reqwest = { version = "0.10.1", features = ["blocking"] }
+reqwest = { version = "0.10.2", features = ["blocking"] }
 futures = "0.3.4"
 tokio = { version = "0.2.11", features = ["full"] }
 dirs = "2.0.2"
