@@ -7,7 +7,7 @@ A configuration file is expected. This should be *config.toml*
 within a directory called .rssdownloader-rs in your home directory, i.e.:
 
 * $HOME/.rssdownloader-rs/config.toml on Linux/macOS
-* {FOLDERID_Profile}\.rssdownloader-rs\config.toml on Windows
+* %USERPROFILE%\.rssdownloader-rs\config.toml on Windows
 
 An example config file would look like this:
 
