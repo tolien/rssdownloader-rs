@@ -3,6 +3,10 @@ use std::fs;
 use regex::Regex;
 
 use toml::Value;
+#[macro_use]
+extern crate log;
+
+extern crate fern;
 
 pub struct FeedConfig {
     pub name: String,
@@ -16,7 +20,7 @@ impl FeedConfig {
         let url;
         if let Some(url_value) = values.get("feedurl") {
             url = url_value.as_str().unwrap();
-            println!("feed URL: {}", String::from(url));
+            debug!("feed URL: {}", String::from(url));
         } else {
             return Err("No URL found for feed");
         }
@@ -57,7 +61,7 @@ impl FeedConfig {
             }
         }
 
-        println!("feed regex list size: {}", regex_list.len());
+        info!("feed regex list size: {}", regex_list.len());
 
         Ok(Self {
             name: String::from(name),
@@ -77,7 +81,7 @@ impl Config {
     pub fn new() -> Result<Self, &'static str> {
         let working_dir = dirs::home_dir().unwrap().join(".rssdownloader-rs");
         let config_path = working_dir.join("config.toml");
-        println!("Using config path {:?}", config_path);
+        debug!("Using config path {:?}", config_path);
         if let Ok(properties) = fs::read_to_string(config_path) {
             Config::construct_from_string(&properties)
         } else {
