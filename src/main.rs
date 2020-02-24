@@ -49,7 +49,7 @@ async fn main() {
             }
             for regex in &feed.download_filter {
                 if regex.is_match(title) {
-                    debug!("title: {:?}", title);
+                    info!("title: {:?}", title);
                     debug!("url: {:?}", item.link().unwrap())
                 }
             }
