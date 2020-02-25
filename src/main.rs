@@ -31,9 +31,11 @@ async fn main() {
     debug!("Global download dir: {}", config.global_download_dir);
     info!("Working with {} feed(s)", config.feeds.len());
 
+    let client = reqwest::Client::new();
+
     for feed in config.feeds {
         info!("Fetching {}", feed.name);
-        let rss_channel = block_on(fetch_rss(&feed.url)).unwrap();
+        let rss_channel = block_on(fetch_rss(&feed.url, &client)).unwrap();
         for item in rss_channel.into_items() {
             let title = item.title().unwrap();
             debug!("Title: {}", title);
@@ -55,9 +57,12 @@ async fn main() {
     }
 }
 
-async fn fetch_rss(url: &str) -> Result<Channel, Box<dyn std::error::Error>> {
+async fn fetch_rss(
+    url: &str,
+    client: &reqwest::Client,
+) -> Result<Channel, Box<dyn std::error::Error>> {
     debug!("Fetching URL {}", url);
-    let text = reqwest::get(url).await?.text().await?;
+    let text = client.get(url).send().await?.text().await?;
 
     let channel = Channel::read_from(text.as_bytes()).unwrap();
 
