@@ -1,6 +1,7 @@
 use std::fs;
 
 use regex::Regex;
+use regex::RegexSet;
 
 use toml::Value;
 #[macro_use]
@@ -13,7 +14,7 @@ pub struct FeedConfig {
     pub url: String,
     pub global_include_filter: Option<Regex>,
     pub global_exclude_filter: Option<Regex>,
-    pub download_filter: Vec<Regex>,
+    pub download_filter: RegexSet,
 }
 impl FeedConfig {
     pub fn new(name: &str, values: &toml::Value) -> Result<Self, &'static str> {
@@ -51,24 +52,25 @@ impl FeedConfig {
             feed_skip_filter = None;
         }
 
-        let mut regex_list = Vec::new();
         let feed_filters = values.get("download_regex_list");
+        let mut regex_list = Vec::new();
         if let Some(filters) = feed_filters {
             for filter in filters.as_array().unwrap() {
                 if filter.as_str().is_some() {
-                    regex_list.push(Regex::new(filter.as_str().unwrap()).unwrap());
+                    regex_list.push(filter.as_str().unwrap());
                 }
             }
         }
+        let regex_set = RegexSet::new(regex_list).unwrap();
 
-        info!("feed regex list size: {}", regex_list.len());
+        info!("feed regex list size: {}", regex_set.len());
 
         Ok(Self {
             name: String::from(name),
             url: String::from(url),
             global_include_filter: feed_filter,
             global_exclude_filter: feed_skip_filter,
-            download_filter: regex_list,
+            download_filter: regex_set,
         })
     }
 }

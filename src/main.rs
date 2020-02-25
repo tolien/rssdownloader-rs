@@ -47,11 +47,9 @@ async fn main() {
                     continue;
                 }
             }
-            for regex in &feed.download_filter {
-                if regex.is_match(title) {
-                    info!("title: {:?}", title);
-                    debug!("url: {:?}", item.link().unwrap())
-                }
+            if feed.download_filter.is_match(title) {
+                info!("Matched title: {:?}", title);
+                debug!("url: {:?}", item.link().unwrap());
             }
         }
     }
