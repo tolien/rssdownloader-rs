@@ -8,6 +8,7 @@ use fern::colors::{Color, ColoredLevelConfig};
 extern crate dirs;
 
 use futures::executor::block_on;
+use reqwest::Client;
 use rss::Channel;
 use rssdownloader_rs::Config;
 use std::process;
@@ -31,7 +32,7 @@ async fn main() {
     debug!("Global download dir: {}", config.global_download_dir);
     info!("Working with {} feed(s)", config.feeds.len());
 
-    let client = reqwest::Client::new();
+    let client = Client::builder().gzip(true).build().unwrap();
 
     for feed in config.feeds {
         info!("Fetching {}", feed.name);
