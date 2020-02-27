@@ -11,6 +11,8 @@ use futures::executor::block_on;
 use reqwest::Client;
 use rss::Channel;
 use rssdownloader_rs::Config;
+use std::fs;
+use std::path::PathBuf;
 use std::process;
 
 #[tokio::main]
@@ -52,22 +54,57 @@ async fn main() {
             }
             if feed.download_filter.is_match(title) {
                 info!("Matched title: {:?}", title);
-                debug!("url: {:?}", item.link().unwrap());
+                let item_url = item.link().unwrap();
+                debug!("url: {:?}", item_url);
+                let fetch_result = fetch_item(item_url, &client).await;
+                if !fetch_result.is_ok() {
+                    error!("Failed to fetch item: {:?}", fetch_result.err());
+                }
             }
         }
     }
 }
 
-async fn fetch_rss(
-    url: &str,
-    client: &reqwest::Client,
-) -> Result<Channel, Box<dyn std::error::Error>> {
+async fn fetch_rss(url: &str, client: &Client) -> Result<Channel, Box<dyn std::error::Error>> {
     debug!("Fetching URL {}", url);
     let text = client.get(url).send().await?.text().await?;
 
     let channel = Channel::read_from(text.as_bytes()).unwrap();
 
     Ok(channel)
+}
+
+async fn fetch_item(url: &str, client: &Client) -> Result<(), Box<dyn std::error::Error>> {
+    debug!("Fetching item {}", url);
+    let response = client.get(url).send().await?;
+    if response.status().is_success() {
+        let headers = response.headers();
+        let content_dispo = headers.get("content-disposition");
+
+        let mut filename = String::new();
+        if let Some(dispo_text) = content_dispo {
+            let dispo_parts = dispo_text.to_str().unwrap().split(';');
+            for part in dispo_parts {
+                if part.trim().starts_with("filename=") {
+                    filename = part.trim().replace("filename=", "").replace("\"", "");
+                }
+            }
+            debug!("Using filename: {:?}", filename);
+        }
+        let mut dest = PathBuf::new();
+        dest.push("/tmp/rssdown");
+        if !dest.exists() {
+            fs::create_dir(&dest)?;
+        }
+        dest.push(filename);
+        if dest.exists() {
+            info!("Not overwriting existing item");
+        } else {
+            fs::write(dest, response.bytes().await?)?;
+        }
+    }
+
+    Ok(())
 }
 
 fn setup_logger() -> Result<(), fern::InitError> {
