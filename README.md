@@ -1,4 +1,7 @@
-# rssdownloader-rs ![Rust](https://github.com/tolien/rssdownloader-rs/workflows/Rust/badge.svg)
+# rssdownloader-rs
+![Rust](https://github.com/tolien/rssdownloader-rs/workflows/Rust/badge.svg)
+[![dependency status](https://deps.rs/repo/github/tolien/rssdownloader-rs/status.svg)](https://deps.rs/repo/github/tolien/rssdownloader-rs)
+
 A Rust-based RSS feed parser
 
 ## Configuration
