@@ -16,6 +16,7 @@ An example config file would look like this:
 
 ```
 download_dir=/opt/podcasts
+refresh_interval_mins = 30
 
 [feeds]
   [feeds.feed_name]
@@ -24,6 +25,10 @@ download_dir=/opt/podcasts
     '.'
   ]
 ```
+
+The option names should speak for themselves, but this is going to scan an RSS feed every 30 minutes and save anything which matches the regex to /opt/podcasts.
+
+If refresh_interval_mins is not set, the default is 12 hours.
 
 Additionally, you can add these options for a feed to simplify your download regexes:
 
