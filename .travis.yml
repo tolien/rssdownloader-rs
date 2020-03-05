@@ -4,6 +4,10 @@ rust:
   - stable
   - beta
   - nightly
+addons:
+  apt:
+    packages:
+      - libsqlite3-dev
 before_script:
   - rustup set profile minimal
   - rustup component add clippy
