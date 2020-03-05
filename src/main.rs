@@ -10,10 +10,10 @@ extern crate dirs;
 use futures::executor::block_on;
 use reqwest::Client;
 use rss::Channel;
-use rssdownloader_rs::Config;
+use rssdownloader_rs::{Config, FetchedItem, SavedState};
 use std::fs;
 use std::path::PathBuf;
-use std::process;
+use std::thread;
 
 #[tokio::main]
 async fn main() {
@@ -27,41 +27,63 @@ async fn main() {
     if config_result.is_ok() {
         config = config_result.unwrap()
     } else {
-        error!("Error parsing config: {}", config_result.err().unwrap());
-        process::exit(1);
-    };
+        panic!("Error parsing config: {}", config_result.err().unwrap());
+    }
+
+    let mut saved_state = SavedState::new().unwrap();
 
     debug!("Global download dir: {}", config.global_download_dir);
-    info!("Working with {} feed(s)", config.feeds.len());
+    debug!("Working with {} feed(s)", config.feeds.len());
 
     let client = Client::builder().gzip(true).build().unwrap();
 
-    for feed in config.feeds {
-        info!("Fetching {}", feed.name);
-        let rss_channel = block_on(fetch_rss(&feed.url, &client)).unwrap();
-        for item in rss_channel.into_items() {
-            let title = item.title().unwrap();
-            debug!("Title: {}", title);
-            if let Some(global_regex) = &feed.global_include_filter {
-                if !global_regex.is_match(title) {
-                    continue;
+    loop {
+        for feed in &config.feeds {
+            info!("Fetching {}", feed.name);
+            let rss_channel = block_on(fetch_rss(&feed.url, &client)).unwrap();
+            for item in rss_channel.into_items() {
+                let title = item.title().unwrap();
+                debug!("Title: {}", title);
+                if let Some(global_regex) = &feed.global_include_filter {
+                    if !global_regex.is_match(title) {
+                        continue;
+                    }
                 }
-            }
-            if let Some(global_exclude_regex) = &feed.global_exclude_filter {
-                if global_exclude_regex.is_match(title) {
-                    continue;
+                if let Some(global_exclude_regex) = &feed.global_exclude_filter {
+                    if global_exclude_regex.is_match(title) {
+                        continue;
+                    }
                 }
-            }
-            if feed.download_filter.is_match(title) {
-                info!("Matched title: {:?}", title);
-                let item_url = item.link().unwrap();
-                debug!("url: {:?}", item_url);
-                let fetch_result = fetch_item(item_url, &client).await;
-                if !fetch_result.is_ok() {
-                    error!("Failed to fetch item: {:?}", fetch_result.err());
+                if feed.download_filter.is_match(title) {
+                    let item_url = item.link().unwrap();
+
+                    let fetched_item = FetchedItem {
+                        name: String::from(title),
+                        url: String::from(item_url),
+                    };
+
+                    if saved_state.fetched_before(&fetched_item).unwrap() {
+                        debug!("Skipping previously fetched item {}", title);
+                        continue;
+                    }
+
+                    info!("Matched title: {:?}", title);
+                    debug!("url: {:?}", item_url);
+                    let fetch_result = fetch_item(item_url, &client).await;
+                    if fetch_result.is_ok() {
+                        saved_state.save(&fetched_item).unwrap_or_else(|err| {
+                            error!("Failed to save state: {:?}", err);
+                        });
+                    } else {
+                        error!("Failed to fetch item: {:?}", fetch_result.err());
+                    }
                 }
             }
         }
+
+        let sleep_time = config.refresh_interval;
+        info!("Sleeping for {} seconds", sleep_time.as_secs());
+        thread::sleep(sleep_time);
     }
 }
 

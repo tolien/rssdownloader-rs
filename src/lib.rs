@@ -2,7 +2,8 @@ use std::fs;
 
 use regex::Regex;
 use regex::RegexSet;
-
+use rusqlite::{params, Connection};
+use std::time::Duration;
 use toml::Value;
 #[macro_use]
 extern crate log;
@@ -63,8 +64,6 @@ impl FeedConfig {
         }
         let regex_set = RegexSet::new(regex_list).unwrap();
 
-        info!("feed regex list size: {}", regex_set.len());
-
         Ok(Self {
             name: String::from(name),
             url: String::from(url),
@@ -77,8 +76,10 @@ impl FeedConfig {
 
 pub struct Config {
     pub global_download_dir: String,
+    pub refresh_interval: Duration,
     pub feeds: Vec<FeedConfig>,
 }
+
 impl Config {
     pub fn new() -> Result<Self, &'static str> {
         let working_dir = dirs::home_dir().unwrap().join(".rssdownloader-rs");
@@ -113,7 +114,11 @@ impl Config {
             if let Some(feed_value) = feeds.get(feed) {
                 let feed_obj_result = FeedConfig::new(feed, feed_value);
                 if let Ok(feed_obj) = feed_obj_result {
-                    info!("Adding feed {}", feed);
+                    info!(
+                        "Adding feed {} with {} regexes",
+                        feed,
+                        feed_obj.download_filter.len()
+                    );
                     feed_objects.push(feed_obj);
                 } else if let Some(error) = feed_obj_result.err() {
                     error!("Error parsing config: {}", error);
@@ -127,10 +132,84 @@ impl Config {
         }
         let download_dir = download_dir_result.unwrap().as_str().unwrap();
 
+        let mut sleep_interval = Duration::new(12 * 60 * 60, 0);
+        if let Some(sleep_value) = values.get("refresh_interval_mins") {
+            let value = sleep_value.as_integer().unwrap();
+            sleep_interval = Duration::new(60 * value as u64, 0);
+        } else {
+            info!("Refresh interval not specified, defaulting to 12 hours");
+        }
         Ok(Self {
             global_download_dir: String::from(download_dir),
+            refresh_interval: sleep_interval,
             feeds: feed_objects,
         })
+    }
+}
+
+pub struct FetchedItem {
+    pub name: String,
+    pub url: String,
+}
+
+pub struct SavedState {
+    db_connection: Connection,
+}
+
+impl SavedState {
+    pub fn new() -> Result<Self, &'static str> {
+        let connection = SavedState::open_state_db().unwrap();
+
+        Ok(Self {
+            db_connection: connection,
+        })
+    }
+
+    fn open_state_db() -> Result<Connection, rusqlite::Error> {
+        let working_dir = dirs::home_dir().unwrap().join(".rssdownloader-rs");
+        let path = working_dir.join("savedstate.sqlite");
+
+        let db = Connection::open(&path)?;
+        SavedState::create_state_table(&db).unwrap_or_else(|err| {
+            panic!("Failed to create saved state table: {}", err);
+        });
+        Ok(db)
+    }
+
+    fn create_state_table(db: &Connection) -> Result<(), rusqlite::Error> {
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS saved_state (
+                id INTEGER PRIMARY KEY,
+                url TEXT NOT NULL,
+                name TEXT NOT NULL
+                )",
+            params![],
+        )?;
+
+        Ok(())
+    }
+
+    pub fn save(&mut self, new_fetch: &FetchedItem) -> Result<(), rusqlite::Error> {
+        self.db_connection
+            .execute(
+                "INSERT INTO saved_state (url, name)
+            VALUES (?1, ?2)",
+                &[&new_fetch.url, &new_fetch.name],
+            )
+            .unwrap();
+
+        Ok(())
+    }
+
+    pub fn fetched_before(&mut self, new_fetch: &FetchedItem) -> Result<bool, rusqlite::Error> {
+        let mut statement = self
+            .db_connection
+            .prepare("SELECT * FROM saved_state WHERE url = ?1")
+            .unwrap();
+
+        let result = statement.exists(&[&new_fetch.url]).unwrap();
+
+        Ok(result)
     }
 }
 
