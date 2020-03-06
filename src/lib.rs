@@ -3,6 +3,7 @@ use std::fs;
 use regex::Regex;
 use regex::RegexSet;
 use rusqlite::{params, Connection};
+use std::path::PathBuf;
 use std::time::Duration;
 use toml::Value;
 #[macro_use]
@@ -75,7 +76,7 @@ impl FeedConfig {
 }
 
 pub struct Config {
-    pub global_download_dir: String,
+    pub global_download_dir: PathBuf,
     pub refresh_interval: Duration,
     pub feeds: Vec<FeedConfig>,
 }
@@ -140,7 +141,7 @@ impl Config {
             info!("Refresh interval not specified, defaulting to 12 hours");
         }
         Ok(Self {
-            global_download_dir: String::from(download_dir),
+            global_download_dir: PathBuf::from(download_dir),
             refresh_interval: sleep_interval,
             feeds: feed_objects,
         })
