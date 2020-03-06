@@ -12,7 +12,7 @@ use reqwest::Client;
 use rss::Channel;
 use rssdownloader_rs::{Config, FetchedItem, SavedState};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{PathBuf,Path};
 use std::thread;
 
 #[tokio::main]
@@ -32,7 +32,7 @@ async fn main() {
 
     let mut saved_state = SavedState::new().unwrap();
 
-    debug!("Global download dir: {}", config.global_download_dir);
+    debug!("Global download dir: {}", config.global_download_dir.to_str().unwrap());
     debug!("Working with {} feed(s)", config.feeds.len());
 
     let client = Client::builder().gzip(true).build().unwrap();
@@ -69,7 +69,7 @@ async fn main() {
 
                     info!("Matched title: {:?}", title);
                     debug!("url: {:?}", item_url);
-                    let fetch_result = fetch_item(item_url, &client).await;
+                    let fetch_result = fetch_item(item_url, &client, &config.global_download_dir).await;
                     if fetch_result.is_ok() {
                         saved_state.save(&fetched_item).unwrap_or_else(|err| {
                             error!("Failed to save state: {:?}", err);
@@ -96,7 +96,7 @@ async fn fetch_rss(url: &str, client: &Client) -> Result<Channel, Box<dyn std::e
     Ok(channel)
 }
 
-async fn fetch_item(url: &str, client: &Client) -> Result<(), Box<dyn std::error::Error>> {
+async fn fetch_item(url: &str, client: &Client, destination_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
     debug!("Fetching item {}", url);
     let response = client.get(url).send().await?;
     if response.status().is_success() {
@@ -113,8 +113,7 @@ async fn fetch_item(url: &str, client: &Client) -> Result<(), Box<dyn std::error
             }
             debug!("Using filename: {:?}", filename);
         }
-        let mut dest = PathBuf::new();
-        dest.push("/tmp/rssdown");
+        let mut dest = PathBuf::from(destination_dir);
         if !dest.exists() {
             fs::create_dir(&dest)?;
         }
