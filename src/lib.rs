@@ -94,6 +94,7 @@ impl Config {
     }
 
     pub fn construct_from_string(properties: &str) -> Result<Self, &'static str> {
+        #![allow(clippy::cast_sign_loss)]
         let parse_result = properties.parse::<Value>();
         if parse_result.is_err() {
             error!("Parse error: {:?}", parse_result.err());
@@ -136,7 +137,9 @@ impl Config {
         let mut sleep_interval = Duration::new(12 * 60 * 60, 0);
         if let Some(sleep_value) = values.get("refresh_interval_mins") {
             let value = sleep_value.as_integer().unwrap();
-            sleep_interval = Duration::new(60 * value as u64, 0);
+            if value > 0 {
+                sleep_interval = Duration::new(60 * value as u64, 0);
+            }
         } else {
             info!("Refresh interval not specified, defaulting to 12 hours");
         }
