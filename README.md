@@ -34,3 +34,16 @@ Additionally, you can add these options for a feed to simplify your download reg
 
 * feed_regex - items which don't match this should be skipped regardless of if they match a download regex
 * feed_skip_regex in a feed - regex for a feed for items which should be skipped
+
+## Execution
+Either clone this repository and run directly from the checkout with
+
+    cargo run --release
+
+or build a binary (eventually releases will provide a compiled binary) with
+
+    cargo build --release
+
+and place the binary (which will be target/release/rssdownloader-rs) wherever you'd like before running it with
+
+    ./rssdownloader-rs
