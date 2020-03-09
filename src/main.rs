@@ -40,7 +40,12 @@ async fn main() {
     loop {
         for feed in &config.feeds {
             info!("Fetching {}", feed.name);
-            let rss_channel = block_on(fetch_rss(&feed.url, &client)).unwrap();
+            let rss_result = block_on(fetch_rss(&feed.url, &client));
+            if rss_result.is_err() {
+                error!("Failed to load RSS feed");
+                continue;
+            }
+            let rss_channel = rss_result.unwrap();
             for item in rss_channel.into_items() {
                 let title = item.title().unwrap();
                 debug!("Title: {}", title);
@@ -89,11 +94,27 @@ async fn main() {
 
 async fn fetch_rss(url: &str, client: &Client) -> Result<Channel, Box<dyn std::error::Error>> {
     debug!("Fetching URL {}", url);
-    let text = client.get(url).send().await?.text().await?;
+    let response = client.get(url).send().await?;
+    let status = response.status();
+    info!("Response status: {}", status);
+    if status.is_success() {
+        let text = response.text().await?;
 
-    let channel = Channel::read_from(text.as_bytes()).unwrap();
-
-    Ok(channel)
+        let rss_result = Channel::read_from(text.as_bytes());
+        if rss_result.is_ok() {
+            let channel = rss_result.unwrap();
+            Ok(channel)
+        }
+        else {
+            let error = rss_result.err().unwrap();
+            error!("Error parsing RSS feed: {:?}", error);
+            Err(Box::new(error))
+        }
+    }
+    else {
+        error!("Error fetching RSS feed");
+        Err(Box::new(response.error_for_status().err().unwrap()))
+    }
 }
 
 async fn fetch_item(url: &str, client: &Client, destination_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
