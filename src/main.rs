@@ -101,8 +101,7 @@ async fn fetch_rss(url: &str, client: &Client) -> Result<Channel, Box<dyn std::e
         let text = response.text().await?;
 
         let rss_result = Channel::read_from(text.as_bytes());
-        if rss_result.is_ok() {
-            let channel = rss_result.unwrap();
+        if let Ok(channel) = rss_result {
             Ok(channel)
         }
         else {
