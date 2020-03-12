@@ -47,7 +47,12 @@ async fn main() {
             }
             let rss_channel = rss_result.unwrap();
             for item in rss_channel.into_items() {
-                let title = item.title().unwrap();
+                let title_result = item.title();
+                if title_result.is_none() {
+                    debug!("No title found");
+                    continue;
+                }
+                let title = title_result.unwrap();
                 debug!("Title: {}", title);
                 if let Some(global_regex) = &feed.global_include_filter {
                     if !global_regex.is_match(title) {
