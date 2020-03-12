@@ -157,9 +157,6 @@ fn setup_logger() -> Result<(), fern::InitError> {
     let colors_line = ColoredLevelConfig::new()
         .error(Color::Red)
         .warn(Color::Yellow)
-        // we actually don't need to specify the color for debug and info, they are white by default
-        .info(Color::White)
-        .debug(Color::White)
         // depending on the terminals color scheme, this is the same as the background color
         .trace(Color::BrightBlack);
 
