@@ -21,10 +21,6 @@ jobs:
         toolchain: ${{ matrix.rust }}
         override: true
         components: clippy
-
-    - name: install libsqlite3-dev
-      run: sudo apt install libsqlite3-dev
-
     - uses: actions-rs/cargo@v1
       with:
         command: test
