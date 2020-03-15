@@ -6,8 +6,6 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - name: install libsqlite3-dev
-        run: sudo apt install libsqlite3-dev
       - uses: actions/checkout@v1
       - uses: actions-rs/toolchain@v1
         with:
