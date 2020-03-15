@@ -79,6 +79,7 @@ pub struct Config {
     pub global_download_dir: PathBuf,
     pub refresh_interval: Duration,
     pub feeds: Vec<FeedConfig>,
+    pub log_file_path: Option<PathBuf>,
 }
 
 impl Config {
@@ -147,6 +148,7 @@ impl Config {
             global_download_dir: PathBuf::from(download_dir),
             refresh_interval: sleep_interval,
             feeds: feed_objects,
+            log_file_path: None,
         })
     }
 }
