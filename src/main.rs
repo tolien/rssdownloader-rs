@@ -12,11 +12,16 @@ use reqwest::Client;
 use rss::Channel;
 use rssdownloader_rs::{Config, FetchedItem, SavedState};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf,Path};
 use std::thread;
 
 #[tokio::main]
 async fn main() {
+    let logger_result = setup_logger();
+    if logger_result.is_err() {
+        panic!("Error applying fern logger");
+    }
+
     let config_result = Config::new();
     let config;
     if config_result.is_ok() {
@@ -25,17 +30,9 @@ async fn main() {
         panic!("Error parsing config: {}", config_result.err().unwrap());
     }
 
-    let logger_result = setup_logger(&config);
-    if logger_result.is_err() {
-        panic!("Error applying fern logger");
-    }
-
     let mut saved_state = SavedState::new().unwrap();
 
-    debug!(
-        "Global download dir: {}",
-        config.global_download_dir.to_str().unwrap()
-    );
+    debug!("Global download dir: {}", config.global_download_dir.to_str().unwrap());
     debug!("Working with {} feed(s)", config.feeds.len());
 
     let client = Client::builder().gzip(true).build().unwrap();
@@ -77,8 +74,7 @@ async fn main() {
 
                     info!("Matched title: {:?}", title);
                     debug!("url: {:?}", item_url);
-                    let fetch_result =
-                        fetch_item(item_url, &client, &config.global_download_dir).await;
+                    let fetch_result = fetch_item(item_url, &client, &config.global_download_dir).await;
                     if fetch_result.is_ok() {
                         saved_state.save(&fetched_item).unwrap_or_else(|err| {
                             error!("Failed to save state: {:?}", err);
@@ -107,22 +103,20 @@ async fn fetch_rss(url: &str, client: &Client) -> Result<Channel, Box<dyn std::e
         let rss_result = Channel::read_from(text.as_bytes());
         if let Ok(channel) = rss_result {
             Ok(channel)
-        } else {
+        }
+        else {
             let error = rss_result.err().unwrap();
             error!("Error parsing RSS feed: {:?}", error);
             Err(Box::new(error))
         }
-    } else {
+    }
+    else {
         error!("Error fetching RSS feed");
         Err(Box::new(response.error_for_status().err().unwrap()))
     }
 }
 
-async fn fetch_item(
-    url: &str,
-    client: &Client,
-    destination_dir: &Path,
-) -> Result<(), Box<dyn std::error::Error>> {
+async fn fetch_item(url: &str, client: &Client, destination_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
     debug!("Fetching item {}", url);
     let response = client.get(url).send().await?;
     if response.status().is_success() {
@@ -154,7 +148,7 @@ async fn fetch_item(
     Ok(())
 }
 
-fn setup_logger(config: &Config) -> Result<(), fern::InitError> {
+fn setup_logger() -> Result<(), fern::InitError> {
     let colors_line = ColoredLevelConfig::new()
         .error(Color::Red)
         .warn(Color::Yellow)
@@ -165,8 +159,7 @@ fn setup_logger(config: &Config) -> Result<(), fern::InitError> {
         .trace(Color::BrightBlack);
 
     let colors_level = colors_line.info(Color::Green);
-    let base_config = fern::Dispatch::new();
-    let stdout_config = fern::Dispatch::new()
+    fern::Dispatch::new()
         .format(move |out, message, record| {
             out.finish(format_args!(
                 "{color_line}[{date}][{level}{color_line}] {message}\x1B[0m",
@@ -180,38 +173,12 @@ fn setup_logger(config: &Config) -> Result<(), fern::InitError> {
             ));
         })
         // Add blanket level filter -
-        .level(log::LevelFilter::Debug)
+        .level(log::LevelFilter::Info)
         .level_for("tokio_reactor", log::LevelFilter::Off)
+        .level_for("tokio_postgres", log::LevelFilter::Off)
         .level_for("reqwest", log::LevelFilter::Off)
         .level_for("hyper", log::LevelFilter::Off)
-        .chain(std::io::stdout());
-
-    if let Some(log_path) = &config.log_file_path {
-        let file_config = fern::Dispatch::new()
-            .format(move |out, message, record| {
-                out.finish(format_args!(
-                    "{color_line}[{date}][{level}{color_line}] {message}\x1B[0    m",
-                    color_line = format_args!(
-                        "\x1B[{}m",
-                        colors_line.get_color(&record.level()).to_fg_str()
-                    ),
-                    date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                    level = colors_level.color(record.level()),
-                    message = message,
-                ));
-            })
-            // Add blanket level filter -
-            .level(log::LevelFilter::Info)
-            .level_for("tokio_reactor", log::LevelFilter::Off)
-            .level_for("reqwest", log::LevelFilter::Off)
-            .level_for("hyper", log::LevelFilter::Off)
-            .chain(fern::log_file(log_path)?);
-    }
-
-    base_config
-        //.chain(file_config)
-        .chain(stdout_config)
+        .chain(std::io::stdout())
         .apply()?;
-
     Ok(())
 }
