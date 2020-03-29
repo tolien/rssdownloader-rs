@@ -228,6 +228,18 @@ mod tests {
     fn config_is_parsed_correctly() {
         let mut result;
 
+        let valid_config = "
+        download_dir=\"/tmp/rssdownload/\"
+        refresh_interval_mins = 30
+
+        [feeds]
+          [feeds.feed_name]
+          feed_url=\"https://example.com/feed.xml\"
+          download_regex_list = [
+            '.'
+          ]
+        ";
+
         result = Config::construct_from_string("jibberish");
         assert_eq!(result.err(), Some("Error parsing config file"));
 
@@ -236,5 +248,8 @@ mod tests {
 
         result = Config::construct_from_string("download_dir = \"/home/user/download\"\n\n");
         assert_eq!(result.err(), Some("Feed list not found"));
+
+        result = Config::construct_from_string(valid_config);
+        assert!(result.is_ok());
     }
 }
