@@ -167,7 +167,7 @@ fn setup_logger(config: &Config) -> Result<(), fern::InitError> {
         .trace(Color::BrightBlack);
 
     let colors_level = colors_line.info(Color::Green);
-    let base_config = fern::Dispatch::new();
+    let mut base_config = fern::Dispatch::new();
     let stdout_config = fern::Dispatch::new()
         .format(move |out, message, record| {
             out.finish(format_args!(
@@ -208,12 +208,11 @@ fn setup_logger(config: &Config) -> Result<(), fern::InitError> {
             .level_for("reqwest", log::LevelFilter::Off)
             .level_for("hyper", log::LevelFilter::Off)
             .chain(fern::log_file(log_path)?);
+
+        base_config = base_config.chain(file_config);
     }
 
-    base_config
-        //.chain(file_config)
-        .chain(stdout_config)
-        .apply()?;
+    base_config.chain(stdout_config).apply()?;
 
     Ok(())
 }
