@@ -144,11 +144,19 @@ impl Config {
         } else {
             info!("Refresh interval not specified, defaulting to 12 hours");
         }
+
+        let mut log_file_path = None;
+        if let Some(log_dir) = values.get("log_dir") {
+            let mut log_file = PathBuf::from(log_dir.as_str().unwrap());
+            log_file.push("rss.log");
+            log_file_path = Some(log_file);
+        }
+
         Ok(Self {
             global_download_dir: PathBuf::from(download_dir),
             refresh_interval: sleep_interval,
             feeds: feed_objects,
-            log_file_path: None,
+            log_file_path: log_file_path,
         })
     }
 }
@@ -221,24 +229,13 @@ impl SavedState {
 
 #[cfg(test)]
 mod tests {
-
     use super::Config;
 
+    use std::time::Duration;
+
     #[test]
-    fn config_is_parsed_correctly() {
+    fn invalid_config() {
         let mut result;
-
-        let valid_config = "
-        download_dir=\"/tmp/rssdownload/\"
-        refresh_interval_mins = 30
-
-        [feeds]
-          [feeds.feed_name]
-          feed_url=\"https://example.com/feed.xml\"
-          download_regex_list = [
-            '.'
-          ]
-        ";
 
         result = Config::construct_from_string("jibberish");
         assert_eq!(result.err(), Some("Error parsing config file"));
@@ -248,8 +245,40 @@ mod tests {
 
         result = Config::construct_from_string("download_dir = \"/home/user/download\"\n\n");
         assert_eq!(result.err(), Some("Feed list not found"));
+    }
 
-        result = Config::construct_from_string(valid_config);
+    #[test]
+    fn config_is_parsed_correctly() {
+        let valid_config = "
+        download_dir=\"/tmp/rssdownload/\"
+        refresh_interval_mins = 30
+        log_dir=\"\"
+
+        [feeds]
+          [feeds.feed_name]
+          feedurl=\"https://example.com/feed.xml\"
+          download_regex_list = [
+            '.'
+          ]
+        ";
+
+        let result = Config::construct_from_string(valid_config);
         assert!(result.is_ok());
+        let parsed_config = result.unwrap();
+        assert_eq!(
+            "/tmp/rssdownload/",
+            parsed_config.global_download_dir.to_str().unwrap()
+        );
+        assert_eq!(Duration::new(30 * 60, 0), parsed_config.refresh_interval);
+        assert!(parsed_config.log_file_path.is_some());
+        assert_eq!(
+            "rss.log",
+            parsed_config.log_file_path.unwrap().to_str().unwrap()
+        );
+        assert_eq!(1, parsed_config.feeds.len());
+
+        let parsed_feed = &parsed_config.feeds[0];
+        assert_eq!("https://example.com/feed.xml", parsed_feed.url);
+        assert_eq!(1, parsed_feed.download_filter.len())
     }
 }
