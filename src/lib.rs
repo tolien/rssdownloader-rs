@@ -156,7 +156,7 @@ impl Config {
             global_download_dir: PathBuf::from(download_dir),
             refresh_interval: sleep_interval,
             feeds: feed_objects,
-            log_file_path: log_file_path,
+            log_file_path,
         })
     }
 }
