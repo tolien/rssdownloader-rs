@@ -14,6 +14,7 @@ use rssdownloader_rs::{Config, FetchedItem, SavedState};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::thread;
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() {
@@ -38,7 +39,11 @@ async fn main() {
     );
     debug!("Working with {} feed(s)", config.feeds.len());
 
-    let client = Client::builder().gzip(true).build().unwrap();
+    let client = Client::builder()
+        .gzip(true)
+        .connect_timeout(Duration::new(5, 0))
+        .build()
+        .unwrap();
 
     loop {
         for feed in &config.feeds {
