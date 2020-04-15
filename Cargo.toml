@@ -14,8 +14,6 @@ toml = "0.5.6"
 chrono = "0.4.11"
 log = "0.4.8"
 fern = { version = "0.6.0", features = ["colored"] }
-reqwest = { version = "0.10.4", features = ["gzip"] }
-futures = "0.3.4"
-tokio = { version = "0.2.16", features = ["full"] }
+reqwest = { version = "0.10.4", features = ["gzip", "blocking"] }
 dirs = "2.0.2"
-rusqlite = { version = "0.21.0", features = ["bundled"] }
+rusqlite = { version = "0.22.0", features = ["bundled"] }

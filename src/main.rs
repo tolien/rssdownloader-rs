@@ -7,8 +7,7 @@ extern crate fern;
 use fern::colors::{Color, ColoredLevelConfig};
 extern crate dirs;
 
-use futures::executor::block_on;
-use reqwest::Client;
+use reqwest::blocking::Client;
 use rss::Channel;
 use rssdownloader_rs::{Config, FetchedItem, SavedState};
 use std::fs;
@@ -16,8 +15,7 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let config_result = Config::new();
     let config;
     if config_result.is_ok() {
@@ -38,17 +36,18 @@ async fn main() {
         config.global_download_dir.to_str().unwrap()
     );
     debug!("Working with {} feed(s)", config.feeds.len());
-
     let client = Client::builder()
         .gzip(true)
         .connect_timeout(Duration::new(5, 0))
+        .timeout(Duration::new(5, 0))
+        .connection_verbose(true)
         .build()
         .unwrap();
 
     loop {
         for feed in &config.feeds {
             info!("Fetching {}", feed.name);
-            let rss_result = block_on(fetch_rss(&feed.url, &client));
+            let rss_result = fetch_rss(&feed.url, &client);
             if rss_result.is_err() {
                 error!("Failed to load RSS feed");
                 continue;
@@ -61,7 +60,7 @@ async fn main() {
                     continue;
                 }
                 let title = title_result.unwrap();
-                debug!("Title: {}", title);
+                //                trace!("Title: {}", title);
                 if let Some(global_regex) = &feed.global_include_filter {
                     if !global_regex.is_match(title) {
                         continue;
@@ -87,8 +86,7 @@ async fn main() {
 
                     info!("Matched title: {:?}", title);
                     debug!("url: {:?}", item_url);
-                    let fetch_result =
-                        fetch_item(item_url, &client, &config.global_download_dir).await;
+                    let fetch_result = fetch_item(item_url, &client, &config.global_download_dir);
                     if fetch_result.is_ok() {
                         saved_state.save(&fetched_item).unwrap_or_else(|err| {
                             error!("Failed to save state: {:?}", err);
@@ -106,13 +104,13 @@ async fn main() {
     }
 }
 
-async fn fetch_rss(url: &str, client: &Client) -> Result<Channel, Box<dyn std::error::Error>> {
+fn fetch_rss(url: &str, client: &Client) -> Result<Channel, Box<dyn std::error::Error>> {
     debug!("Fetching URL {}", url);
-    let response = client.get(url).send().await?;
+    let response = client.get(url).send()?;
     let status = response.status();
     info!("Response status: {}", status);
     if status.is_success() {
-        let text = response.text().await?;
+        let text = response.text()?;
 
         let rss_result = Channel::read_from(text.as_bytes());
         if let Ok(channel) = rss_result {
@@ -128,13 +126,13 @@ async fn fetch_rss(url: &str, client: &Client) -> Result<Channel, Box<dyn std::e
     }
 }
 
-async fn fetch_item(
+fn fetch_item(
     url: &str,
     client: &Client,
     destination_dir: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     debug!("Fetching item {}", url);
-    let response = client.get(url).send().await?;
+    let response = client.get(url).send()?;
     if response.status().is_success() {
         let headers = response.headers();
         let content_dispo = headers.get("content-disposition");
@@ -157,7 +155,7 @@ async fn fetch_item(
         if dest.exists() {
             info!("Not overwriting existing item");
         } else {
-            fs::write(dest, response.bytes().await?)?;
+            fs::write(dest, response.bytes()?)?;
         }
     }
 
@@ -187,7 +185,7 @@ fn setup_logger(config: &Config) -> Result<(), fern::InitError> {
             ));
         })
         // Add blanket level filter -
-        .level(log::LevelFilter::Debug)
+        .level(log::LevelFilter::Info)
         .level_for("tokio_reactor", log::LevelFilter::Off)
         .level_for("reqwest", log::LevelFilter::Off)
         .level_for("hyper", log::LevelFilter::Off)
@@ -208,10 +206,8 @@ fn setup_logger(config: &Config) -> Result<(), fern::InitError> {
                 ));
             })
             // Add blanket level filter -
-            .level(log::LevelFilter::Info)
+            .level(log::LevelFilter::Trace)
             .level_for("tokio_reactor", log::LevelFilter::Off)
-            .level_for("reqwest", log::LevelFilter::Off)
-            .level_for("hyper", log::LevelFilter::Off)
             .chain(fern::log_file(log_path)?);
 
         base_config = base_config.chain(file_config);
