@@ -12,7 +12,7 @@ before_script:
   - rustup set profile minimal
   - rustup component add clippy
 script:
-  - cargo clippy
+  - cargo clippy -- -D warnings
   - cargo test --verbose
 matrix:
   allow_failures:
