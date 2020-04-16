@@ -17,90 +17,88 @@ use std::time::Duration;
 
 fn main() {
     let config_result = Config::new();
-    let config;
-    if config_result.is_ok() {
-        config = config_result.unwrap()
-    } else {
-        panic!("Error parsing config: {}", config_result.err().unwrap());
-    }
-
-    let logger_result = setup_logger(&config);
-    if logger_result.is_err() {
-        panic!("Error applying fern logger");
-    }
-
-    let mut saved_state = SavedState::new().unwrap();
-
-    debug!(
-        "Global download dir: {}",
-        config.global_download_dir.to_str().unwrap()
-    );
-    debug!("Working with {} feed(s)", config.feeds.len());
-    let client = Client::builder()
-        .gzip(true)
-        .connect_timeout(Duration::new(5, 0))
-        .timeout(Duration::new(5, 0))
-        .connection_verbose(true)
-        .build()
-        .unwrap();
-
-    loop {
-        for feed in &config.feeds {
-            info!("Fetching {}", feed.name);
-            let rss_result = fetch_rss(&feed.url, &client);
-            if rss_result.is_err() {
-                error!("Failed to load RSS feed");
-                continue;
-            }
-            let rss_channel = rss_result.unwrap();
-            for item in rss_channel.into_items() {
-                let title_result = item.title();
-                if title_result.is_none() {
-                    debug!("No title found");
-                    continue;
-                }
-                let title = title_result.unwrap();
-                //                trace!("Title: {}", title);
-                if let Some(global_regex) = &feed.global_include_filter {
-                    if !global_regex.is_match(title) {
-                        continue;
-                    }
-                }
-                if let Some(global_exclude_regex) = &feed.global_exclude_filter {
-                    if global_exclude_regex.is_match(title) {
-                        continue;
-                    }
-                }
-                if feed.download_filter.is_match(title) {
-                    let item_url = item.link().unwrap();
-
-                    let fetched_item = FetchedItem {
-                        name: String::from(title),
-                        url: String::from(item_url),
-                    };
-
-                    if saved_state.fetched_before(&fetched_item).unwrap() {
-                        debug!("Skipping previously fetched item {}", title);
-                        continue;
-                    }
-
-                    info!("Matched title: {:?}", title);
-                    debug!("url: {:?}", item_url);
-                    let fetch_result = fetch_item(item_url, &client, &config.global_download_dir);
-                    if fetch_result.is_ok() {
-                        saved_state.save(&fetched_item).unwrap_or_else(|err| {
-                            error!("Failed to save state: {:?}", err);
-                        });
-                    } else {
-                        error!("Failed to fetch item: {:?}", fetch_result.err());
-                    }
-                }
-            }
+    if let Ok(config) = config_result {
+        let logger_result = setup_logger(&config);
+        if logger_result.is_err() {
+            panic!("Error applying fern logger");
         }
 
-        let sleep_time = config.refresh_interval;
-        info!("Sleeping for {} seconds", sleep_time.as_secs());
-        thread::sleep(sleep_time);
+        let mut saved_state = SavedState::new().unwrap();
+
+        debug!(
+            "Global download dir: {}",
+            config.global_download_dir.to_str().unwrap()
+        );
+        debug!("Working with {} feed(s)", config.feeds.len());
+        let client = Client::builder()
+            .gzip(true)
+            .connect_timeout(Duration::new(5, 0))
+            .timeout(Duration::new(5, 0))
+            .connection_verbose(true)
+            .build()
+            .unwrap();
+
+        loop {
+            for feed in &config.feeds {
+                info!("Fetching {}", feed.name);
+                let rss_result = fetch_rss(&feed.url, &client);
+                if rss_result.is_err() {
+                    error!("Failed to load RSS feed");
+                    continue;
+                }
+                let rss_channel = rss_result.unwrap();
+                for item in rss_channel.into_items() {
+                    let title_result = item.title();
+                    if title_result.is_none() {
+                        debug!("No title found");
+                        continue;
+                    }
+                    let title = title_result.unwrap();
+                    //                trace!("Title: {}", title);
+                    if let Some(global_regex) = &feed.global_include_filter {
+                        if !global_regex.is_match(title) {
+                            continue;
+                        }
+                    }
+                    if let Some(global_exclude_regex) = &feed.global_exclude_filter {
+                        if global_exclude_regex.is_match(title) {
+                            continue;
+                        }
+                    }
+                    if feed.download_filter.is_match(title) {
+                        let item_url = item.link().unwrap();
+
+                        let fetched_item = FetchedItem {
+                            name: String::from(title),
+                            url: String::from(item_url),
+                        };
+
+                        if saved_state.fetched_before(&fetched_item).unwrap() {
+                            debug!("Skipping previously fetched item {}", title);
+                            continue;
+                        }
+
+                        info!("Matched title: {:?}", title);
+                        debug!("url: {:?}", item_url);
+                        let fetch_result =
+                            fetch_item(item_url, &client, &config.global_download_dir);
+                        if fetch_result.is_ok() {
+                            saved_state.save(&fetched_item).unwrap_or_else(|err| {
+                                error!("Failed to save state: {:?}", err);
+                            });
+                        } else {
+                            error!("Failed to fetch item: {:?}", fetch_result.err());
+                        }
+                    }
+                }
+            }
+
+            let sleep_time = config.refresh_interval;
+            info!("Sleeping for {} seconds", sleep_time.as_secs());
+            thread::sleep(sleep_time);
+        }
+    } else {
+        panic!("Error parsing config: {}", config_result.err().unwrap());
     }
 }
 
