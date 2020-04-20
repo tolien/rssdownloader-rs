@@ -54,7 +54,7 @@ fn main() {
                         continue;
                     }
                     let title = title_result.unwrap();
-                    //                trace!("Title: {}", title);
+                    trace!("Title: {}", title);
                     if let Some(global_regex) = &feed.global_include_filter {
                         if !global_regex.is_match(title) {
                             continue;
@@ -204,8 +204,10 @@ fn setup_logger(config: &Config) -> Result<(), fern::InitError> {
                 ));
             })
             // Add blanket level filter -
-            .level(log::LevelFilter::Trace)
+            .level(log::LevelFilter::Info)
             .level_for("tokio_reactor", log::LevelFilter::Off)
+            .level_for("reqwest", log::LevelFilter::Off)
+            .level_for("hyper", log::LevelFilter::Off)
             .chain(fern::log_file(log_path)?);
 
         base_config = base_config.chain(file_config);
