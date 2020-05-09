@@ -80,6 +80,8 @@ pub struct Config {
     pub refresh_interval: Duration,
     pub feeds: Vec<FeedConfig>,
     pub log_file_path: Option<PathBuf>,
+    pub log_level_file: Option<log::LevelFilter>,
+    pub log_level_stdout: Option<log::LevelFilter>,
 }
 
 impl Config {
@@ -152,12 +154,36 @@ impl Config {
             log_file_path = Some(log_file);
         }
 
+        let mut log_level_stdout = None;
+        if let Some(log_level_name) = values.get("log_level_stdout") {
+            log_level_stdout =
+                Config::convert_string_to_levelfilter(log_level_name.as_str().unwrap());
+        }
+
+        let mut log_level_file = None;
+        if let Some(log_level_name) = values.get("log_level_file") {
+            log_level_file =
+                Config::convert_string_to_levelfilter(log_level_name.as_str().unwrap());
+        }
+
         Ok(Self {
             global_download_dir: PathBuf::from(download_dir),
             refresh_interval: sleep_interval,
             feeds: feed_objects,
             log_file_path,
+            log_level_stdout,
+            log_level_file,
         })
+    }
+
+    fn convert_string_to_levelfilter(level: &str) -> Option<log::LevelFilter> {
+        match level {
+            "Info" => Some(log::LevelFilter::Info),
+            "Error" => Some(log::LevelFilter::Error),"
+            "Debug" => Some(log::LevelFilter::Debug),
+            "Trace" => Some(log::LevelFilter::Trace),
+            _ => None,
+        }
     }
 }
 
@@ -253,6 +279,7 @@ mod tests {
         download_dir=\"/tmp/rssdownload/\"
         refresh_interval_mins = 30
         log_dir=\"\"
+        log_level_stdout=\"Debug\"
 
         [feeds]
           [feeds.feed_name]
@@ -271,6 +298,11 @@ mod tests {
         );
         assert_eq!(Duration::new(30 * 60, 0), parsed_config.refresh_interval);
         assert!(parsed_config.log_file_path.is_some());
+        assert_eq!(
+            parsed_config.log_level_stdout,
+            Some(log::LevelFilter::Debug)
+        );
+        assert_eq!(parsed_config.log_level_file, None);
         assert_eq!(
             "rss.log",
             parsed_config.log_file_path.unwrap().to_str().unwrap()

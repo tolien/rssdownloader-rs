@@ -169,31 +169,11 @@ fn setup_logger(config: &Config) -> Result<(), fern::InitError> {
 
     let colors_level = colors_line.info(Color::Green);
     let mut base_config = fern::Dispatch::new();
-    let stdout_config = fern::Dispatch::new()
-        .format(move |out, message, record| {
-            out.finish(format_args!(
-                "{color_line}[{date}][{level}{color_line}] {message}\x1B[0m",
-                color_line = format_args!(
-                    "\x1B[{}m",
-                    colors_line.get_color(&record.level()).to_fg_str()
-                ),
-                date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                level = colors_level.color(record.level()),
-                message = message,
-            ));
-        })
-        // Add blanket level filter -
-        .level(log::LevelFilter::Info)
-        .level_for("tokio_reactor", log::LevelFilter::Off)
-        .level_for("reqwest", log::LevelFilter::Off)
-        .level_for("hyper", log::LevelFilter::Off)
-        .chain(std::io::stdout());
-
-    if let Some(log_path) = &config.log_file_path {
-        let file_config = fern::Dispatch::new()
+    if let Some(log_level) = config.log_level_stdout {
+        let stdout_config = fern::Dispatch::new()
             .format(move |out, message, record| {
                 out.finish(format_args!(
-                    "{color_line}[{date}][{level}{color_line}] {message}\x1B[0    m",
+                    "{color_line}[{date}][{level}{color_line}] {message}\x1B[0m",
                     color_line = format_args!(
                         "\x1B[{}m",
                         colors_line.get_color(&record.level()).to_fg_str()
@@ -204,16 +184,41 @@ fn setup_logger(config: &Config) -> Result<(), fern::InitError> {
                 ));
             })
             // Add blanket level filter -
-            .level(log::LevelFilter::Info)
+            .level(log_level)
             .level_for("tokio_reactor", log::LevelFilter::Off)
             .level_for("reqwest", log::LevelFilter::Off)
             .level_for("hyper", log::LevelFilter::Off)
-            .chain(fern::log_file(log_path)?);
-
-        base_config = base_config.chain(file_config);
+            .chain(std::io::stdout());
+        base_config = base_config.chain(stdout_config);
     }
 
-    base_config.chain(stdout_config).apply()?;
+    if let Some(log_path) = &config.log_file_path {
+        if let Some(log_level) = config.log_level_file {
+            let file_config = fern::Dispatch::new()
+                .format(move |out, message, record| {
+                    out.finish(format_args!(
+                        "{color_line}[{date}][{level}{color_line}] {message}\x1B[0    m",
+                        color_line = format_args!(
+                            "\x1B[{}m",
+                            colors_line.get_color(&record.level()).to_fg_str()
+                        ),
+                        date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
+                        level = colors_level.color(record.level()),
+                        message = message,
+                    ));
+                })
+                // Add blanket level filter -
+                .level(log_level)
+                .level_for("tokio_reactor", log::LevelFilter::Off)
+                .level_for("reqwest", log::LevelFilter::Off)
+                .level_for("hyper", log::LevelFilter::Off)
+                .chain(fern::log_file(log_path)?);
+
+            base_config = base_config.chain(file_config);
+        }
+    }
+
+    base_config.apply()?;
 
     Ok(())
 }
