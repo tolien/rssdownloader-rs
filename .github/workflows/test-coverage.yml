@@ -9,7 +9,7 @@ jobs:
       - uses: actions/checkout@v1
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           override: true
       - uses: actions-rs/cargo@v1
         with:
@@ -19,7 +19,7 @@ jobs:
           CARGO_INCREMENTAL: '0'
           RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Zno-landing-pads'
       - name: Gather coverage data
-        uses: actions-rs/grcov@v0.1
+        uses: actions-rs/grcov@v0.15
         id: coverage
       - name: Coveralls upload
         uses: coverallsapp/github-action@master
