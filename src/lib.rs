@@ -179,7 +179,7 @@ impl Config {
     fn convert_string_to_levelfilter(level: &str) -> Option<log::LevelFilter> {
         match level {
             "Info" => Some(log::LevelFilter::Info),
-            "Error" => Some(log::LevelFilter::Error),"
+            "Error" => Some(log::LevelFilter::Error),
             "Debug" => Some(log::LevelFilter::Debug),
             "Trace" => Some(log::LevelFilter::Trace),
             _ => None,
