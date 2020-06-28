@@ -13,7 +13,7 @@ signal-hook = "0.1.16"
 toml = "0.5.6"
 chrono = "0.4.11"
 log = "0.4.8"
-fern = { version = "0.6.0", features = ["colored"] }
 reqwest = { version = "0.10.6", features = ["gzip", "blocking"] }
 dirs = "3.0.0"
 rusqlite = { version = "0.23.1", features = ["bundled"] }
+log4rs = "0.12.0"
