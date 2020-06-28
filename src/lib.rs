@@ -9,8 +9,6 @@ use toml::Value;
 #[macro_use]
 extern crate log;
 
-extern crate fern;
-
 pub struct FeedConfig {
     pub name: String,
     pub url: String,
