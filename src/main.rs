@@ -12,7 +12,16 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
 
+use log::LevelFilter;
+use log4rs::append::console::ConsoleAppender;
+use log4rs::config::{Appender, Logger, Root};
+use log4rs::encode::pattern::PatternEncoder;
+
 fn main() {
+    let logger_result = initialise_logger();
+    if logger_result.is_err() {
+        panic!("Couldn't set up logger");
+    }
     let config_result = Config::new();
     if let Ok(config) = config_result {
         let mut saved_state = SavedState::new().unwrap();
@@ -152,3 +161,26 @@ fn fetch_item(
     Ok(())
 }
 
+fn initialise_logger() -> Result<(), log4rs::Error> {
+    let stdout = ConsoleAppender::builder()
+        .encoder(Box::new(PatternEncoder::new(
+            "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}{n}",
+        )))
+        .build();
+
+    let stdout_appender = Appender::builder().build("stdout", Box::new(stdout));
+    let config = log4rs::config::Config::builder()
+        .appender(stdout_appender)
+        .logger(
+            Logger::builder()
+                .appender("stdout")
+                .additive(false)
+                .build("rssdownloader_rs", LevelFilter::Trace),
+        )
+        .build(Root::builder().appender("stdout").build(LevelFilter::Off))
+        .unwrap();
+
+    let _handle = log4rs::init_config(config).unwrap();
+
+    Ok(())
+}
