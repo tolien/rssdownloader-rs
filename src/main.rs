@@ -166,14 +166,14 @@ fn fetch_item(
 fn initialise_logger() -> Result<Handle, log4rs::Error> {
     let logfile = FileAppender::builder()
         .encoder(Box::new(PatternEncoder::new(
-            "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}{n}",
+            "[{d(%Y-%m-%d %H:%M:%S)}][{h({l})}] {m}{n}",
         )))
         .build("~/.rssdownloader_rs/rss.log")
         .unwrap();
 
     let stdout = ConsoleAppender::builder()
         .encoder(Box::new(PatternEncoder::new(
-            "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}{n}",
+            "[{d(%Y-%m-%d %H:%M:%S)}][{h({l})}] {m}{n}",
         )))
         .build();
 
