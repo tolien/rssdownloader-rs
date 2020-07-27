@@ -14,8 +14,10 @@ use std::time::Duration;
 
 use log::LevelFilter;
 use log4rs::append::console::ConsoleAppender;
+use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Logger, Root};
 use log4rs::encode::pattern::PatternEncoder;
+use log4rs::Handle;
 
 fn main() {
     let logger_result = initialise_logger();
@@ -161,7 +163,14 @@ fn fetch_item(
     Ok(())
 }
 
-fn initialise_logger() -> Result<(), log4rs::Error> {
+fn initialise_logger() -> Result<Handle, log4rs::Error> {
+    let logfile = FileAppender::builder()
+        .encoder(Box::new(PatternEncoder::new(
+            "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}{n}",
+        )))
+        .build("~/.rssdownloader_rs/rss.log")
+        .unwrap();
+
     let stdout = ConsoleAppender::builder()
         .encoder(Box::new(PatternEncoder::new(
             "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}{n}",
@@ -169,8 +178,10 @@ fn initialise_logger() -> Result<(), log4rs::Error> {
         .build();
 
     let stdout_appender = Appender::builder().build("stdout", Box::new(stdout));
+    let file_appender = Appender::builder().build("file", Box::new(logfile));
     let config = log4rs::config::Config::builder()
         .appender(stdout_appender)
+        .appender(file_appender)
         .logger(
             Logger::builder()
                 .appender("stdout")
@@ -180,7 +191,7 @@ fn initialise_logger() -> Result<(), log4rs::Error> {
         .build(Root::builder().appender("stdout").build(LevelFilter::Off))
         .unwrap();
 
-    let _handle = log4rs::init_config(config).unwrap();
+    let handle = log4rs::init_config(config).unwrap();
 
-    Ok(())
+    Ok(handle)
 }
