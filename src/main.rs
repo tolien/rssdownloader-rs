@@ -9,7 +9,7 @@ extern crate dirs;
 
 use reqwest::blocking::Client;
 use rss::Channel;
-use rssdownloader_rs::{Config, FetchedItem, SavedState};
+use rssdownloader_rs::{Config, FeedConfig, FetchedItem, SavedState};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::thread;
@@ -22,8 +22,6 @@ fn main() {
         if logger_result.is_err() {
             panic!("Error applying fern logger");
         }
-
-        let mut saved_state = SavedState::new().unwrap();
 
         debug!(
             "Global download dir: {}",
@@ -40,57 +38,7 @@ fn main() {
 
         loop {
             for feed in &config.feeds {
-                info!("Fetching {}", feed.name);
-                let rss_result = fetch_rss(&feed.url, &client);
-                if rss_result.is_err() {
-                    error!("Failed to load RSS feed");
-                    continue;
-                }
-                let rss_channel = rss_result.unwrap();
-                for item in rss_channel.into_items() {
-                    let title_result = item.title();
-                    if title_result.is_none() {
-                        debug!("No title found");
-                        continue;
-                    }
-                    let title = title_result.unwrap();
-                    trace!("Title: {}", title);
-                    if let Some(global_regex) = &feed.global_include_filter {
-                        if !global_regex.is_match(title) {
-                            continue;
-                        }
-                    }
-                    if let Some(global_exclude_regex) = &feed.global_exclude_filter {
-                        if global_exclude_regex.is_match(title) {
-                            continue;
-                        }
-                    }
-                    if feed.download_filter.is_match(title) {
-                        let item_url = item.link().unwrap();
-
-                        let fetched_item = FetchedItem {
-                            name: String::from(title),
-                            url: String::from(item_url),
-                        };
-
-                        if saved_state.fetched_before(&fetched_item).unwrap() {
-                            debug!("Skipping previously fetched item {}", title);
-                            continue;
-                        }
-
-                        info!("Matched title: {:?}", title);
-                        debug!("url: {:?}", item_url);
-                        let fetch_result =
-                            fetch_item(item_url, &client, &config.global_download_dir);
-                        if fetch_result.is_ok() {
-                            saved_state.save(&fetched_item).unwrap_or_else(|err| {
-                                error!("Failed to save state: {:?}", err);
-                            });
-                        } else {
-                            error!("Failed to fetch item: {:?}", fetch_result.err());
-                        }
-                    }
-                }
+              handle_feed(feed, &client, &config);
             }
 
             let sleep_time = config.refresh_interval;
@@ -99,6 +47,62 @@ fn main() {
         }
     } else {
         panic!("Error parsing config: {}", config_result.err().unwrap());
+    }
+}
+
+fn handle_feed(feed: &FeedConfig, client: &Client, config: &Config) {
+  let mut saved_state = SavedState::new().unwrap();
+  info!("Fetching {}", feed.name);
+  let rss_result = fetch_rss(&feed.url, &client);
+  if rss_result.is_err() {
+      error!("Failed to load RSS feed");
+      return;
+  }
+  let rss_channel = rss_result.unwrap();
+  for item in rss_channel.into_items() {
+      let title_result = item.title();
+      if title_result.is_none() {
+          debug!("No title found");
+          return;
+      }
+      let title = title_result.unwrap();
+      trace!("Title: {}", title);
+      if let Some(global_regex) = &feed.global_include_filter {
+          if !global_regex.is_match(title) {
+              return;
+          }
+      }
+      if let Some(global_exclude_regex) = &feed.global_exclude_filter {
+          if global_exclude_regex.is_match(title) {
+              return;
+          }
+      }
+      if feed.download_filter.is_match(title) {
+          let item_url = item.link().unwrap();
+
+          let fetched_item = FetchedItem {
+              name: String::from(title),
+              url: String::from(item_url),
+          };
+
+          if saved_state.fetched_before(&fetched_item).unwrap() {
+              debug!("Skipping previously fetched item {}", title);
+              return;
+          }
+
+          info!("Matched title: {:?}", title);
+          debug!("url: {:?}", item_url);
+          let fetch_result =
+              fetch_item(item_url, &client, &config.global_download_dir);
+          if fetch_result.is_ok() {
+              saved_state.save(&fetched_item).unwrap_or_else(|err| {
+                  error!("Failed to save state: {:?}", err);
+              });
+          } else {
+              error!("Failed to fetch item: {:?}", fetch_result.err());
+          }
+      }
+  
     }
 }
 
