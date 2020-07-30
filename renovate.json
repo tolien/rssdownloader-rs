@@ -1,5 +1,7 @@
 {
   "extends": [
-    "config:base"
+    "config:base",
+    ":automergeMinor",
+    ":maintainLockFilesWeekly"
   ]
-}
+}                                                                          /0.0s
