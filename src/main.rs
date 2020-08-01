@@ -47,8 +47,6 @@ fn main() {
     }
     let config_result = Config::new(config_path);
     if let Ok(config) = config_result {
-        let mut saved_state = SavedState::new().unwrap();
-
         debug!(
             "Global download dir: {}",
             config.global_download_dir.to_str().unwrap()
