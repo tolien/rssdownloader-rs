@@ -41,7 +41,7 @@ fn main() {
         config_path = None;
     }
 
-    let logger_result = initialise_logger();
+    let logger_result = bootstrap_logger();
     if logger_result.is_err() {
         panic!("Couldn't set up logger");
     }
@@ -194,7 +194,7 @@ fn fetch_item(
 
 // TODO: also need to set levels to match the config file
 
-fn initialise_logger() -> Result<Handle, log4rs::Error> {
+fn bootstrap_logger() -> Result<Handle, log4rs::Error> {
     let working_dir = dirs::home_dir().unwrap().join(".rssdownloader-rs");
     let log_path = working_dir.join("rss.log");
 
