@@ -83,9 +83,13 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new() -> Result<Self, &'static str> {
+    pub fn new(path_to_config: Option<PathBuf>) -> Result<Self, &'static str> {
         let working_dir = dirs::home_dir().unwrap().join(".rssdownloader-rs");
-        let config_path = working_dir.join("config.toml");
+        let mut config_path = working_dir.join("config.toml");
+        if path_to_config.is_some() {
+            config_path = path_to_config.unwrap();
+        }
+
         debug!("Using config path {:?}", config_path);
         if let Ok(properties) = fs::read_to_string(config_path) {
             Config::construct_from_string(&properties)
