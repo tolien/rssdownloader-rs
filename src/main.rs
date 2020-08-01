@@ -19,12 +19,33 @@ use log4rs::config::{Appender, Logger, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::Handle;
 
+extern crate clap;
+use clap::{App, Arg};
+
 fn main() {
+    let matches = App::new("rssdownloader-rs")
+        .arg(
+            Arg::with_name("config")
+                .short("-c")
+                .long("config")
+                .help("Path to the config file to use")
+                .takes_value(true)
+                .required(false),
+        )
+        .get_matches();
+
+    let config_path;
+    if let Some(config_path_str) = matches.value_of("config") {
+        config_path = Some(PathBuf::from(config_path_str));
+    } else {
+        config_path = None;
+    }
+
     let logger_result = initialise_logger();
     if logger_result.is_err() {
         panic!("Couldn't set up logger");
     }
-    let config_result = Config::new();
+    let config_result = Config::new(config_path);
     if let Ok(config) = config_result {
         let mut saved_state = SavedState::new().unwrap();
 
@@ -163,12 +184,21 @@ fn fetch_item(
     Ok(())
 }
 
+// TODO: this should start up with no file logging
+// then return a handle which we can use to enable it
+// using the path in the config
+
+// TODO: also need to set levels to match the config file
+
 fn initialise_logger() -> Result<Handle, log4rs::Error> {
+    let working_dir = dirs::home_dir().unwrap().join(".rssdownloader-rs");
+    let log_path = working_dir.join("rss.log");
+
     let logfile = FileAppender::builder()
         .encoder(Box::new(PatternEncoder::new(
             "[{d(%Y-%m-%d %H:%M:%S)}][{h({l})}] {m}{n}",
         )))
-        .build("~/.rssdownloader_rs/rss.log")
+        .build(log_path)
         .unwrap();
 
     let stdout = ConsoleAppender::builder()
