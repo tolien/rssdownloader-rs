@@ -14,6 +14,7 @@ use std::time::Duration;
 
 use log::LevelFilter;
 use log4rs::append::console::ConsoleAppender;
+use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Logger, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::Handle;
@@ -33,6 +34,8 @@ fn main() {
         )
         .get_matches();
 
+    let logger_handle = bootstrap_logger().unwrap();
+
     let config_path;
     if let Some(config_path_str) = matches.value_of("config") {
         config_path = Some(PathBuf::from(config_path_str));
@@ -40,12 +43,13 @@ fn main() {
         config_path = None;
     }
 
-    let logger_result = bootstrap_logger();
-    if logger_result.is_err() {
-        panic!("Couldn't set up logger");
-    }
     let config_result = Config::new(config_path);
     if let Ok(config) = config_result {
+        let logger_result = apply_config_to_logger(&logger_handle, &config);
+        if logger_result.is_err() {
+            panic!("Couldn't set up logger");
+        }
+
         debug!(
             "Global download dir: {}",
             config.global_download_dir.to_str().unwrap()
@@ -213,4 +217,61 @@ fn bootstrap_logger() -> Result<Handle, log4rs::Error> {
     let handle = log4rs::init_config(config).unwrap();
 
     Ok(handle)
+}
+
+fn apply_config_to_logger(handle: &Handle, config: &Config) -> Result<(), log4rs::Error> {
+    let mut config_builder = log4rs::config::Config::builder();
+    let mut root_builder = Root::builder();
+
+    if let Some(log_level) = config.log_level_stdout {
+        let stdout = ConsoleAppender::builder()
+            .encoder(Box::new(PatternEncoder::new(
+                "[{d(%Y-%m-%d %H:%M:%S)}][{h({l})}] {m}{n}",
+            )))
+            .build();
+
+        let stdout_appender = Appender::builder().build("stdout", Box::new(stdout));
+
+        config_builder = config_builder.appender(stdout_appender).logger(
+            Logger::builder()
+                .appender("stdout")
+                .additive(false)
+                .build("rssdownloader_rs", log_level),
+        );
+
+        root_builder = root_builder.appender("stdout");
+    } else {
+        debug!("No stdout log level found, this will be one of the last messages logged to stdout");
+    }
+
+    if let Some(log_path) = &config.log_file_path {
+        if let Some(log_level) = config.log_level_file {
+            let logfile = FileAppender::builder()
+                .encoder(Box::new(PatternEncoder::new(
+                    "[{d(%Y-%m-%d %H:%M:%S)}][{h({l})}] {m}{n}",
+                )))
+                .build(log_path)
+                .unwrap();
+
+            let file_appender = Appender::builder().build("file", Box::new(logfile));
+
+            config_builder = config_builder.appender(file_appender).logger(
+                Logger::builder()
+                    .appender("file")
+                    .additive(false)
+                    .build("rssdownloader_rs", log_level),
+            );
+
+            root_builder = root_builder.appender("file");
+        }
+    } else {
+        debug!("No file log level found, won't enable file logging");
+    }
+
+    let root = root_builder.build(LevelFilter::Off);
+    let log4rs_config = config_builder.build(root).unwrap();
+
+    handle.set_config(log4rs_config);
+
+    Ok(())
 }
