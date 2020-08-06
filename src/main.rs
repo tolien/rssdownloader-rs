@@ -17,6 +17,7 @@ use log4rs::append::console::ConsoleAppender;
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Logger, Root};
 use log4rs::encode::pattern::PatternEncoder;
+use log4rs::filter::threshold::ThresholdFilter;
 use log4rs::Handle;
 
 extern crate clap;
@@ -189,12 +190,6 @@ fn fetch_item(
     Ok(())
 }
 
-// TODO: this should start up with no file logging
-// then return a handle which we can use to enable it
-// using the path in the config
-
-// TODO: also need to set levels to match the config file
-
 fn bootstrap_logger() -> Result<Handle, log4rs::Error> {
     let stdout = ConsoleAppender::builder()
         .encoder(Box::new(PatternEncoder::new(
@@ -209,9 +204,9 @@ fn bootstrap_logger() -> Result<Handle, log4rs::Error> {
             Logger::builder()
                 .appender("stdout")
                 .additive(false)
-                .build("rssdownloader_rs", LevelFilter::Trace),
+                .build("stdout_log", LevelFilter::Trace),
         )
-        .build(Root::builder().appender("stdout").build(LevelFilter::Off))
+        .build(Root::builder().appender("stdout").build(LevelFilter::Trace))
         .unwrap();
 
     let handle = log4rs::init_config(config).unwrap();
@@ -222,30 +217,37 @@ fn bootstrap_logger() -> Result<Handle, log4rs::Error> {
 fn apply_config_to_logger(handle: &Handle, config: &Config) -> Result<(), log4rs::Error> {
     let mut config_builder = log4rs::config::Config::builder();
     let mut root_builder = Root::builder();
+    let mut logger_builder = Logger::builder().additive(false);
+    let mut max_level = LevelFilter::Off;
 
     if let Some(log_level) = config.log_level_stdout {
+        if log_level > max_level {
+            max_level = log_level;
+        }
+        debug!("Stdout log level: {}", log_level);
         let stdout = ConsoleAppender::builder()
             .encoder(Box::new(PatternEncoder::new(
                 "[{d(%Y-%m-%d %H:%M:%S)}][{h({l})}] {m}{n}",
             )))
             .build();
 
-        let stdout_appender = Appender::builder().build("stdout", Box::new(stdout));
+        let stdout_appender = Appender::builder()
+            .filter(Box::new(ThresholdFilter::new(log_level)))
+            .build("stdout", Box::new(stdout));
 
-        config_builder = config_builder.appender(stdout_appender).logger(
-            Logger::builder()
-                .appender("stdout")
-                .additive(false)
-                .build("rssdownloader_rs", log_level),
-        );
-
+        config_builder = config_builder.appender(stdout_appender);
         root_builder = root_builder.appender("stdout");
+        logger_builder = logger_builder.appender("stdout")
     } else {
-        debug!("No stdout log level found, this will be one of the last messages logged to stdout");
+        info!("No stdout log level found, this will be one of the last messages logged to stdout");
     }
 
     if let Some(log_path) = &config.log_file_path {
         if let Some(log_level) = config.log_level_file {
+            if log_level > max_level {
+                max_level = log_level;
+            }
+            debug!("File log level: {}", log_level);
             let logfile = FileAppender::builder()
                 .encoder(Box::new(PatternEncoder::new(
                     "[{d(%Y-%m-%d %H:%M:%S)}][{h({l})}] {m}{n}",
@@ -253,22 +255,20 @@ fn apply_config_to_logger(handle: &Handle, config: &Config) -> Result<(), log4rs
                 .build(log_path)
                 .unwrap();
 
-            let file_appender = Appender::builder().build("file", Box::new(logfile));
+            let file_appender = Appender::builder()
+                .filter(Box::new(ThresholdFilter::new(log_level)))
+                .build("file", Box::new(logfile));
 
-            config_builder = config_builder.appender(file_appender).logger(
-                Logger::builder()
-                    .appender("file")
-                    .additive(false)
-                    .build("rssdownloader_rs", log_level),
-            );
-
+            config_builder = config_builder.appender(file_appender);
             root_builder = root_builder.appender("file");
+            logger_builder = logger_builder.appender("file");
         }
     } else {
-        debug!("No file log level found, won't enable file logging");
+        info!("No file log level found, won't enable file logging");
     }
 
-    let root = root_builder.build(LevelFilter::Off);
+    config_builder = config_builder.logger(logger_builder.build("rssdownloader_rs", max_level));
+    let root = root_builder.appender("stdout").build(LevelFilter::Off);
     let log4rs_config = config_builder.build(root).unwrap();
 
     handle.set_config(log4rs_config);
