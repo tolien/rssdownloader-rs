@@ -35,7 +35,7 @@ fn main() {
         )
         .get_matches();
 
-    let logger_handle = bootstrap_logger().unwrap();
+    let logger_handle = bootstrap_logger();
 
     let config_path;
     if let Some(config_path_str) = matches.value_of("config") {
@@ -46,10 +46,7 @@ fn main() {
 
     let config_result = Config::new(config_path);
     if let Ok(config) = config_result {
-        let logger_result = apply_config_to_logger(&logger_handle, &config);
-        if logger_result.is_err() {
-            panic!("Couldn't set up logger");
-        }
+        apply_config_to_logger(&logger_handle, &config);
 
         debug!(
             "Global download dir: {}",
@@ -190,7 +187,7 @@ fn fetch_item(
     Ok(())
 }
 
-fn bootstrap_logger() -> Result<Handle, log4rs::Error> {
+fn bootstrap_logger() -> Handle {
     let stdout = ConsoleAppender::builder()
         .encoder(Box::new(PatternEncoder::new(
             "[{d(%Y-%m-%d %H:%M:%S)}][{h({l})}] {m}{n}",
@@ -209,12 +206,10 @@ fn bootstrap_logger() -> Result<Handle, log4rs::Error> {
         .build(Root::builder().appender("stdout").build(LevelFilter::Trace))
         .unwrap();
 
-    let handle = log4rs::init_config(config).unwrap();
-
-    Ok(handle)
+    log4rs::init_config(config).unwrap()
 }
 
-fn apply_config_to_logger(handle: &Handle, config: &Config) -> Result<(), log4rs::Error> {
+fn apply_config_to_logger(handle: &Handle, config: &Config) {
     let mut config_builder = log4rs::config::Config::builder();
     let mut root_builder = Root::builder();
     let mut logger_builder = Logger::builder().additive(false);
@@ -272,6 +267,4 @@ fn apply_config_to_logger(handle: &Handle, config: &Config) -> Result<(), log4rs
     let log4rs_config = config_builder.build(root).unwrap();
 
     handle.set_config(log4rs_config);
-
-    Ok(())
 }
