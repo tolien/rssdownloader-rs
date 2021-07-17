@@ -78,7 +78,7 @@ fn main() {
 fn handle_feed(feed: &FeedConfig, client: &Client, config: &Config) {
     let mut saved_state = SavedState::new().unwrap();
     info!("Fetching {}", feed.name);
-    let rss_result = fetch_rss(&feed.url, &client);
+    let rss_result = fetch_rss(&feed.url, client);
     if rss_result.is_err() {
         error!("Failed to load RSS feed");
         return;
@@ -117,7 +117,7 @@ fn handle_feed(feed: &FeedConfig, client: &Client, config: &Config) {
 
             info!("Matched title: {:?}", title);
             debug!("url: {:?}", item_url);
-            let fetch_result = fetch_item(item_url, &client, &config.global_download_dir);
+            let fetch_result = fetch_item(item_url, client, &config.global_download_dir);
             if fetch_result.is_ok() {
                 saved_state.save(&fetched_item).unwrap_or_else(|err| {
                     error!("Failed to save state: {:?}", err);
@@ -232,7 +232,7 @@ fn apply_config_to_logger(handle: &Handle, config: &Config) {
 
         config_builder = config_builder.appender(stdout_appender);
         root_builder = root_builder.appender("stdout");
-        logger_builder = logger_builder.appender("stdout")
+        logger_builder = logger_builder.appender("stdout");
     } else {
         info!("No stdout log level found, this will be one of the last messages logged to stdout");
     }
