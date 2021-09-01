@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 rss = "1.10.0"
 regex = "1.5.4"
-signal-hook = "0.3.9"
+signal-hook = "0.3.10"
 toml = "0.5.8"
 chrono = "0.4.19"
 log = "0.4.14"
