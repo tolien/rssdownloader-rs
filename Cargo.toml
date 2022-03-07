@@ -15,6 +15,6 @@ chrono = "0.4.19"
 log = "0.4.14"
 reqwest = { version = "0.11.7", features = ["gzip", "blocking"] }
 dirs = "4.0.0"
-rusqlite = { version = "0.26.1", features = ["bundled"] }
+rusqlite = { version = "0.27.0", features = ["bundled"] }
 log4rs = "1.0.0"
 clap = "2.34.0"
