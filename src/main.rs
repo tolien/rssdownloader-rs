@@ -37,12 +37,7 @@ fn main() {
 
     let logger_handle = bootstrap_logger();
 
-    let config_path;
-    if let Some(config_path_str) = matches.value_of("config") {
-        config_path = Some(PathBuf::from(config_path_str));
-    } else {
-        config_path = None;
-    }
+    let config_path = matches.value_of("config").map(PathBuf::from);
 
     let config_result = Config::new(config_path);
     if let Ok(config) = config_result {
@@ -167,7 +162,7 @@ fn fetch_item(
             let dispo_parts = dispo_text.to_str().unwrap().split(';');
             for part in dispo_parts {
                 if part.trim().starts_with("filename=") {
-                    filename = part.trim().replace("filename=", "").replace("\"", "");
+                    filename = part.trim().replace("filename=", "").replace('\"', "");
                 }
             }
             debug!("Using filename: {:?}", filename);
