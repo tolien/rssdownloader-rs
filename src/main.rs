@@ -21,13 +21,13 @@ use log4rs::filter::threshold::ThresholdFilter;
 use log4rs::Handle;
 
 extern crate clap;
-use clap::{App, Arg};
+use clap::{Command, Arg};
 
 fn main() {
-    let matches = App::new("rssdownloader-rs")
+    let matches = Command::new("rssdownloader-rs")
         .arg(
-            Arg::with_name("config")
-                .short("-c")
+            Arg::new("config")
+                .short('c')
                 .long("config")
                 .help("Path to the config file to use")
                 .takes_value(true)
