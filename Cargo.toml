@@ -12,7 +12,7 @@ regex = "1.5.5"
 signal-hook = "0.3.13"
 toml = "0.5.8"
 chrono = "0.4.19"
-log = "0.4.14"
+log = "0.4.16"
 reqwest = { version = "0.11.10", features = ["gzip", "blocking"] }
 dirs = "4.0.0"
 rusqlite = { version = "0.27.0", features = ["bundled"] }
