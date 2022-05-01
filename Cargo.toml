@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rss = "2.0.0"
+rss = "2.0.1"
 regex = "1.5.5"
 signal-hook = "0.3.13"
 toml = "0.5.8"
