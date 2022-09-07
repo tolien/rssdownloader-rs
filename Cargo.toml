@@ -16,5 +16,5 @@ log = "0.4.17"
 reqwest = { version = "0.11.11", features = ["gzip", "blocking"] }
 dirs = "4.0.0"
 rusqlite = { version = "0.28.0", features = ["bundled"] }
-log4rs = "1.1.1"
 clap = "3.2.20"
+fern = "0.6.1"
