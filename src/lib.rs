@@ -238,7 +238,7 @@ impl SavedState {
             .execute(
                 "INSERT INTO saved_state (url, name)
             VALUES (?1, ?2)",
-                &[&new_fetch.url, &new_fetch.name],
+                [&new_fetch.url, &new_fetch.name],
             )
             .unwrap();
 
@@ -251,7 +251,7 @@ impl SavedState {
             .prepare("SELECT * FROM saved_state WHERE url = ?1")
             .unwrap();
 
-        let result = statement.exists(&[&new_fetch.url]).unwrap();
+        let result = statement.exists([&new_fetch.url]).unwrap();
 
         Ok(result)
     }
