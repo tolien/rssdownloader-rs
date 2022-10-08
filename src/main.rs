@@ -30,14 +30,13 @@ fn main() {
                 .short('c')
                 .long("config")
                 .help("Path to the config file to use")
-                .takes_value(true)
                 .required(false),
         )
         .get_matches();
 
     let logger_handle = bootstrap_logger();
 
-    let config_path = matches.value_of("config").map(PathBuf::from);
+    let config_path = matches.get_one::<String>("config").map(PathBuf::from);
 
     let config_result = Config::new(config_path);
     if let Ok(config) = config_result {
