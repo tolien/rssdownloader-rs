@@ -1,27 +1,28 @@
 extern crate chrono;
 #[macro_use]
 extern crate log;
-
 extern crate dirs;
+extern crate fern;
+extern crate lazy_static;
 
+use fern::colors::{Color, ColoredLevelConfig};
+use lazy_static::lazy_static;
 use reqwest::blocking::Client;
 use rss::Channel;
 use rssdownloader_rs::{Config, FeedConfig, FetchedItem, SavedState};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::RwLock;
 use std::thread;
 use std::time::Duration;
 
-use log::LevelFilter;
-use log4rs::append::console::ConsoleAppender;
-use log4rs::append::file::FileAppender;
-use log4rs::config::{Appender, Logger, Root};
-use log4rs::encode::pattern::PatternEncoder;
-use log4rs::filter::threshold::ThresholdFilter;
-use log4rs::Handle;
-
 extern crate clap;
-use clap::{Command, Arg};
+use clap::{Arg, Command};
+
+lazy_static! {
+    static ref STDOUT_LOG_LEVEL: RwLock<log::LevelFilter> = RwLock::new(log::LevelFilter::Debug);
+    static ref FILE_LOG_LEVEL: RwLock<log::LevelFilter> = RwLock::new(log::LevelFilter::Off);
+}
 
 fn main() {
     let matches = Command::new("rssdownloader-rs")
@@ -34,13 +35,15 @@ fn main() {
         )
         .get_matches();
 
-    let logger_handle = bootstrap_logger();
+    if setup_logger().is_err() {
+        panic!("Couldn't set up logger");
+    }
 
     let config_path = matches.get_one::<String>("config").map(PathBuf::from);
 
     let config_result = Config::new(config_path);
     if let Ok(config) = config_result {
-        apply_config_to_logger(&logger_handle, &config);
+        // apply_config_to_logger(&logger_handle, &config);
 
         debug!(
             "Global download dir: {}",
@@ -74,7 +77,7 @@ fn handle_feed(feed: &FeedConfig, client: &Client, config: &Config) {
     info!("Fetching {}", feed.name);
     let rss_result = fetch_rss(&feed.url, client);
     if rss_result.is_err() {
-        error!("Failed to load RSS feed");
+        error!("Failed to load RSS feed: {}", rss_result.err().unwrap());
         return;
     }
     let rss_channel = rss_result.unwrap();
@@ -181,84 +184,71 @@ fn fetch_item(
     Ok(())
 }
 
-fn bootstrap_logger() -> Handle {
-    let stdout = ConsoleAppender::builder()
-        .encoder(Box::new(PatternEncoder::new(
-            "[{d(%Y-%m-%d %H:%M:%S)}][{h({l})}] {m}{n}",
-        )))
-        .build();
+fn setup_logger() -> std::result::Result<(), fern::InitError> {
+    let colors_line = ColoredLevelConfig::new()
+        .error(Color::Red)
+        .warn(Color::Yellow)
+        // we actually don't need to specify the color for debug and info, they are white by default
+        .info(Color::White)
+        .debug(Color::White)
+        // depending on the terminals color scheme, this is the same as the background color
+        .trace(Color::BrightBlack);
 
-    let stdout_appender = Appender::builder().build("stdout", Box::new(stdout));
-    let config = log4rs::config::Config::builder()
-        .appender(stdout_appender)
-        .logger(
-            Logger::builder()
-                .appender("stdout")
-                .additive(false)
-                .build("stdout_log", LevelFilter::Trace),
-        )
-        .build(Root::builder().appender("stdout").build(LevelFilter::Trace))
-        .unwrap();
-
-    log4rs::init_config(config).unwrap()
-}
-
-fn apply_config_to_logger(handle: &Handle, config: &Config) {
-    let mut config_builder = log4rs::config::Config::builder();
-    let mut root_builder = Root::builder();
-    let mut logger_builder = Logger::builder().additive(false);
-    let mut max_level = LevelFilter::Off;
-
-    if let Some(log_level) = config.log_level_stdout {
-        if log_level > max_level {
-            max_level = log_level;
-        }
-        debug!("Stdout log level: {}", log_level);
-        let stdout = ConsoleAppender::builder()
-            .encoder(Box::new(PatternEncoder::new(
-                "[{d(%Y-%m-%d %H:%M:%S)}][{h({l})}] {m}{n}",
-            )))
-            .build();
-
-        let stdout_appender = Appender::builder()
-            .filter(Box::new(ThresholdFilter::new(log_level)))
-            .build("stdout", Box::new(stdout));
-
-        config_builder = config_builder.appender(stdout_appender);
-        root_builder = root_builder.appender("stdout");
-        logger_builder = logger_builder.appender("stdout");
-    } else {
-        info!("No stdout log level found, this will be one of the last messages logged to stdout");
-    }
-
-    if let Some(log_path) = &config.log_file_path {
-        if let Some(log_level) = config.log_level_file {
-            if log_level > max_level {
-                max_level = log_level;
+    let colors_level = colors_line.info(Color::Green);
+    let base_config = fern::Dispatch::new();
+    let stdout_config = fern::Dispatch::new()
+        .filter(|metadata| {
+            match STDOUT_LOG_LEVEL.read() {
+                Ok(log) => metadata.level() <= *log,
+                Err(_err) => true,
             }
-            debug!("File log level: {}", log_level);
-            let logfile = FileAppender::builder()
-                .encoder(Box::new(PatternEncoder::new(
-                    "[{d(%Y-%m-%d %H:%M:%S)}][{h({l})}] {m}{n}",
-                )))
-                .build(log_path)
-                .unwrap();
+        })
+        .format(move |out, message, record| {
+            out.finish(format_args!(
+                "{color_line}[{date}][{level}{color_line}] {message}\x1B[0m",
+                color_line = format_args!(
+                    "\x1B[{}m",
+                    colors_line.get_color(&record.level()).to_fg_str()
+                ),
+                date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
+                level = colors_level.color(record.level()),
+                message = message,
+            ));
+        })
+        // Add blanket level filter -
+        .level(log::LevelFilter::Debug)
+        .level_for("tokio_reactor", log::LevelFilter::Off)
+        .chain(std::io::stdout());
 
-            let file_appender = Appender::builder()
-                .filter(Box::new(ThresholdFilter::new(log_level)))
-                .build("file", Box::new(logfile));
+    let file_config = fern::Dispatch::new()
+        .filter(|metadata| {
+            match FILE_LOG_LEVEL.read() {
+                Ok(log) => metadata.level() <= *log,
+                Err(_err) => true,
+            }
+        })
+        .format(move |out, message, record| {
+            out.finish(format_args!(
+                "{color_line}[{date}][{level}{color_line}] {message}\x1B[0    m",
+                color_line = format_args!(
+                    "\x1B[{}m",
+                    colors_line.get_color(&record.level()).to_fg_str()
+                ),
+                date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
+                level = colors_level.color(record.level()),
+                message = message,
+            ));
+        })
+        // Add blanket level filter -
+        .level(log::LevelFilter::Info)
+        .level_for("tokio_reactor", log::LevelFilter::Off)
+        //.chain(fern::log_file(&config.debug_log_path)?)
+    ;
 
-            config_builder = config_builder.appender(file_appender);
-            root_builder = root_builder.appender("file");
-            logger_builder = logger_builder.appender("file");
-        }
-    } else {
-        info!("No file log level found, won't enable file logging");
-    }
+    base_config
+        .chain(file_config)
+        .chain(stdout_config)
+        .apply()?;
 
-    config_builder = config_builder.logger(logger_builder.build("rssdownloader_rs", max_level));
-    let root = root_builder.appender("stdout").build(LevelFilter::Off);
-    let log4rs_config = config_builder.build(root).unwrap();
-
-    handle.set_config(log4rs_config);
+    Ok(())
 }
