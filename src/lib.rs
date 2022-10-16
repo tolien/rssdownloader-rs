@@ -17,7 +17,7 @@ pub struct FeedConfig {
     pub download_filter: RegexSet,
 }
 impl FeedConfig {
-    pub fn new(name: &str, values: &toml::Value) -> Result<Self, &'static str> {
+    pub fn new(name: &str, values: &Value) -> Result<Self, &'static str> {
         let url;
         if let Some(url_value) = values.get("feedurl") {
             url = url_value.as_str().unwrap();
