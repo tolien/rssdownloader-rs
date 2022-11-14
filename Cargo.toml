@@ -8,13 +8,13 @@ edition = "2018"
 
 [dependencies]
 rss = "2.0.1"
-regex = "1.6.0"
+regex = "1.7.0"
 signal-hook = "0.3.14"
 toml = "0.5.9"
-chrono = "0.4.22"
+chrono = "0.4.23"
 log = "0.4.17"
 reqwest = { version = "0.11.12", features = ["gzip", "blocking"] }
 dirs = "4.0.0"
 rusqlite = { version = "0.28.0", features = ["bundled"] }
 log4rs = "1.2.0"
-clap = "4.0.15"
+clap = "4.0.23"
