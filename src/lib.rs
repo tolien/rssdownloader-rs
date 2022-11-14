@@ -213,7 +213,7 @@ impl SavedState {
         let working_dir = dirs::home_dir().unwrap().join(".rssdownloader-rs");
         let path = working_dir.join("savedstate.sqlite");
 
-        let db = Connection::open(&path)?;
+        let db = Connection::open(path)?;
         SavedState::create_state_table(&db).unwrap_or_else(|err| {
             panic!("Failed to create saved state table: {}", err);
         });
