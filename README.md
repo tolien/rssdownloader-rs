@@ -26,13 +26,15 @@ refresh_interval_mins = 30
   ]
 ```
 
-The option names should speak for themselves, but this is going to scan an RSS feed every 30 minutes and save anything which matches the regex to /opt/podcasts.
+This is going to scan an RSS feed every 30 minutes and save anything which matches the regex to /opt/podcasts.
 
 If refresh_interval_mins is not set, the default is 12 hours.
 
 Additionally, you can add these options for a feed to simplify your download regexes:
 
-* feed_regex - items which don't match this should be skipped regardless of if they match a download regex
+* feed_regex - items which don't match this should be skipped regardless of if they match a download regex, e.g. if the 
+feed offers different resolution versions of videos you might want to select only the 1080p version
+with this
 * feed_skip_regex in a feed - regex for a feed for items which should be skipped
 
 ## Execution
