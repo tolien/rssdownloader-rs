@@ -7,14 +7,14 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rss = "2.0.1"
+rss = "2.0.2"
 regex = "1.7.1"
-signal-hook = "0.3.14"
-toml = "0.5.10"
+signal-hook = "0.3.15"
+toml = "0.7.2"
 chrono = "0.4.23"
 log = "0.4.17"
 reqwest = { version = "0.11.14", features = ["gzip", "blocking"] }
 dirs = "4.0.0"
 rusqlite = { version = "0.28.0", features = ["bundled"] }
 log4rs = "1.2.0"
-clap = "4.0.32"
+clap = "4.1.6"
