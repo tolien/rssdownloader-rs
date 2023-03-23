@@ -35,9 +35,7 @@ fn main() {
         )
         .get_matches();
 
-    if setup_logger().is_err() {
-        panic!("Couldn't set up logger");
-    }
+    assert!(setup_logger().is_ok(), "Couldn't set up logger");
 
     let config_path = matches.get_one::<String>("config").map(PathBuf::from);
 
