@@ -10,7 +10,7 @@ edition = "2018"
 rss = "2.0.6"
 regex = "1.9.6"
 signal-hook = "0.3.17"
-toml = "0.7.8"
+toml = "0.8.2"
 log = "0.4.20"
 reqwest = { version = "0.11.22", features = ["gzip", "blocking"] }
 dirs = "5.0.1"
