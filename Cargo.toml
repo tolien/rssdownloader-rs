@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 rss = "2.0.6"
-regex = "1.10.2"
+regex = "1.10.3"
 signal-hook = "0.3.17"
 toml = "0.8.8"
 log = "0.4.20"
