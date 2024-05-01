@@ -17,4 +17,4 @@ dirs = "5.0.1"
 rusqlite = { version = "0.31.0", features = ["bundled"] }
 log4rs = "1.3.0"
 clap = "4.5.4"
-time = "0.3.34"
+time = "0.3.36"
