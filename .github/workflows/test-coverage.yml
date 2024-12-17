@@ -5,24 +5,30 @@ name: Code Coverage
 jobs:
   lint:
     runs-on: ubuntu-latest
+    env:
+      COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
-          override: true
-      - uses: actions-rs/cargo@v1
+          submodules: true
+      - uses: dtolnay/rust-toolchain@nightly
         with:
-          command: test
-          args: --all-features --no-fail-fast
+          components: rustc, rust-std, cargo, llvm-tools, llvm-tools-preview
+      - uses: baptiste0928/cargo-install@v3
+        with:
+          crate: grcov
+      - run: cargo clean
+      - run: mkdir -p ./target/debug/coverage
+      - run: cargo test --all-features --no-fail-fast
         env:
           CARGO_INCREMENTAL: '0'
-          RUSTFLAGS: '-Cinstrument-coverage -Ccodegen-units=1 -Cllvm-args=--inline-threshold=0 -Clink-dead-code -Coverflow-checks=off'
-      - name: Gather coverage data
-        uses: actions-rs/grcov@v0.1
-        id: coverage
+          LLVM_PROFILE_FILE: 'target/debug/coverage/rssdownloader-rs-%p-%m.profraw'
+          RUSTFLAGS: '-Cinstrument-coverage -Cpanic=abort -Zpanic_abort_tests'
+          RUSTDOCFLAGS: '-C instrument-coverage -Cpanic=abort -Zpanic_abort_tests -Z unstable-options --persist-doctests target/debug/'
+      - run: zip ./target/debug/coverage/files.zip ./target/debug/coverage/rssdownloader-rs-*.profraw
+      - run: grcov ./target/debug/coverage/files.zip -s . --binary-path ./target/debug/ --service-name "Continuous Integration" --commit-sha ${GITHUB_SHA} -t coveralls --branch --ignore-not-existing --ignore "../*" --ignore "/*" --ignore "*/test_helper.rs" -o ./target/debug/coverage/ --token=${COVERALLS_TOKEN}
       - name: Coveralls upload
-        uses: coverallsapp/github-action@master
+        uses: coverallsapp/github-action@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: ${{ steps.coverage.outputs.report }}
+          file: ./target/debug/coverage/coveralls
