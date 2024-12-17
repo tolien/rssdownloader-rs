@@ -7,6 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+      REPO_NAME: ${{ github.event.repository.name }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -19,13 +20,15 @@ jobs:
           crate: grcov
       - run: cargo clean
       - run: mkdir -p ./target/debug/coverage
-      - run: cargo test --all-features --no-fail-fast
+      - name: Set LLVM_PROFILE_FILE
+        run: |
+          echo "LLVM_PROFILE_FILE=target/debug/coverage/${REPO_NAME}-%p-%m.profraw" >> $GITHUB_ENV
+      - run: echo $LLVM_PROFILE_FILE && cargo test --all-features --no-fail-fast
         env:
           CARGO_INCREMENTAL: '0'
-          LLVM_PROFILE_FILE: 'target/debug/coverage/rssdownloader-rs-%p-%m.profraw'
           RUSTFLAGS: '-Cinstrument-coverage -Cpanic=abort -Zpanic_abort_tests'
           RUSTDOCFLAGS: '-C instrument-coverage -Cpanic=abort -Zpanic_abort_tests -Z unstable-options --persist-doctests target/debug/'
-      - run: zip ./target/debug/coverage/files.zip ./target/debug/coverage/rssdownloader-rs-*.profraw
+      - run: zip ./target/debug/coverage/files.zip ./target/debug/coverage/${REPO_NAME}-*.profraw
       - run: grcov ./target/debug/coverage/files.zip -s . --binary-path ./target/debug/ --service-name "Continuous Integration" --commit-sha ${GITHUB_SHA} -t coveralls --branch --ignore-not-existing --ignore "../*" --ignore "/*" --ignore "*/test_helper.rs" -o ./target/debug/coverage/ --token=${COVERALLS_TOKEN}
       - name: Coveralls upload
         uses: coverallsapp/github-action@main
