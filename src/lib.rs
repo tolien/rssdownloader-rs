@@ -92,7 +92,7 @@ impl Config {
             |path| path,
         );
 
-        debug!("Using config path {:?}", config_path);
+        debug!("Using config path {config_path:?}");
         if let Ok(properties) = fs::read_to_string(config_path) {
             Config::construct_from_string(&properties)
         } else {
@@ -130,7 +130,7 @@ impl Config {
                     );
                     feed_objects.push(feed_obj);
                 } else if let Some(error) = feed_obj_result.err() {
-                    error!("Error parsing config: {}", error);
+                    error!("Error parsing config: {error}");
                 }
             }
         }
