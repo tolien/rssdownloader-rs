@@ -85,7 +85,7 @@ fn handle_feed(feed: &FeedConfig, client: &Client, config: &Config) {
             return;
         }
         let title = title_result.unwrap();
-        trace!("Title: {}", title);
+        trace!("Title: {title}");
         if let Some(global_regex) = &feed.global_include_filter {
             if !global_regex.is_match(title) {
                 return;
@@ -105,16 +105,16 @@ fn handle_feed(feed: &FeedConfig, client: &Client, config: &Config) {
             };
 
             if saved_state.fetched_before(&fetched_item).unwrap() {
-                debug!("Skipping previously fetched item {}", title);
+                debug!("Skipping previously fetched item {title}");
                 return;
             }
 
-            info!("Matched title: {:?}", title);
-            debug!("url: {:?}", item_url);
+            info!("Matched title: {title:?}");
+            debug!("url: {item_url:?}");
             let fetch_result = fetch_item(item_url, client, &config.global_download_dir);
             if fetch_result.is_ok() {
                 saved_state.save(&fetched_item).unwrap_or_else(|err| {
-                    error!("Failed to save state: {:?}", err);
+                    error!("Failed to save state: {err:?}");
                 });
             } else {
                 error!("Failed to fetch item: {:?}", fetch_result.err());
@@ -124,10 +124,10 @@ fn handle_feed(feed: &FeedConfig, client: &Client, config: &Config) {
 }
 
 fn fetch_rss(url: &str, client: &Client) -> Result<Channel, Box<dyn std::error::Error>> {
-    debug!("Fetching URL {}", url);
+    debug!("Fetching URL {url}");
     let response = client.get(url).send()?;
     let status = response.status();
-    info!("Response status: {}", status);
+    info!("Response status: {status}");
     if status.is_success() {
         let text = response.text()?;
 
@@ -136,7 +136,7 @@ fn fetch_rss(url: &str, client: &Client) -> Result<Channel, Box<dyn std::error::
             Ok(channel)
         } else {
             let error = rss_result.err().unwrap();
-            error!("Error parsing RSS feed: {:?}", error);
+            error!("Error parsing RSS feed: {error:?}");
             Err(Box::new(error))
         }
     } else {
@@ -150,7 +150,7 @@ fn fetch_item(
     client: &Client,
     destination_dir: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    debug!("Fetching item {}", url);
+    debug!("Fetching item {url}");
     let response = client.get(url).send()?;
     if response.status().is_success() {
         let headers = response.headers();
@@ -164,7 +164,7 @@ fn fetch_item(
                     filename = part.trim().replace("filename=", "").replace('\"', "");
                 }
             }
-            debug!("Using filename: {:?}", filename);
+            debug!("Using filename: {filename:?}");
         }
         let mut dest = PathBuf::from(destination_dir);
         if !dest.exists() {
@@ -213,7 +213,7 @@ fn apply_config_to_logger(handle: &Handle, config: &Config) {
         if log_level > max_level {
             max_level = log_level;
         }
-        debug!("Stdout log level: {}", log_level);
+        debug!("Stdout log level: {log_level}");
         let stdout = ConsoleAppender::builder()
             .encoder(Box::new(PatternEncoder::new(
                 "[{d(%Y-%m-%d %H:%M:%S)}][{h({l})}] {m}{n}",
@@ -236,7 +236,7 @@ fn apply_config_to_logger(handle: &Handle, config: &Config) {
             if log_level > max_level {
                 max_level = log_level;
             }
-            debug!("File log level: {}", log_level);
+            debug!("File log level: {log_level}");
             let logfile = FileAppender::builder()
                 .encoder(Box::new(PatternEncoder::new(
                     "[{d(%Y-%m-%d %H:%M:%S)}][{h({l})}] {m}{n}",
