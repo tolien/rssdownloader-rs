@@ -5,6 +5,7 @@ use regex::RegexSet;
 use rusqlite::{params, Connection};
 use std::path::PathBuf;
 use std::time::Duration;
+use toml::Table;
 use toml::Value;
 #[macro_use]
 extern crate log;
@@ -99,7 +100,7 @@ impl Config {
 
     pub fn construct_from_string(properties: &str) -> Result<Self, &'static str> {
         #![allow(clippy::cast_sign_loss)]
-        let parse_result = properties.parse::<Value>();
+        let parse_result = properties.parse::<Table>();
         if parse_result.is_err() {
             error!("Parse error: {:?}", parse_result.err());
             return Err("Error parsing config file");
