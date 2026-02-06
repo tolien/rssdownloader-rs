@@ -6,7 +6,6 @@ use rusqlite::{params, Connection};
 use std::path::PathBuf;
 use std::time::Duration;
 use toml::Table;
-use toml::Value;
 #[macro_use]
 extern crate log;
 
