@@ -9,7 +9,7 @@ jobs:
       COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
       REPO_NAME: ${{ github.event.repository.name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
       - uses: dtolnay/rust-toolchain@nightly
